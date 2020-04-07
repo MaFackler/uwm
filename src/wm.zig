@@ -3,9 +3,21 @@ const std = @import("std");
 pub const Workspace = struct {
     windows: [8]u64 = undefined,
     amountOfWindows: u32 = 0,
+    focusedWindow: i32 = 0,
 };
 
-pub fn WorkspaceRemoveWindow(workspace: *Workspace, window: u84) void {
+pub fn WorkspaceGetWindowIndex(workspace: *Workspace, window: u64) i32 {
+    var res: i32 = -1;
+    for (workspace.windows) |win, i| {
+        if (win == window) {
+            res = @intCast(i32, i);
+            break;
+        }
+    }
+    return res;
+}
+
+pub fn WorkspaceRemoveWindow(workspace: *Workspace, window: u64) void {
     var removeIndex: usize = 0;
     var found = false;
     for (workspace.windows) |win, i| {

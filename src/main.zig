@@ -17,6 +17,10 @@ var displayHeight: i32 = 0;
 
 //var windows = std.AutoHashMap(u64, Workspace).init(std.heap.direct_allocator);
 
+fn WindowClose(window: u64) void {
+    _ = c.XKillClient(display, window);
+}
+
 pub fn isWindowRegistered(window: c.Window) bool {
     var workspace = getActiveWorkspace();
     // TODO: array contains??
@@ -54,6 +58,15 @@ pub fn onDestroyNotify(e: *c.XEvent) void {
     warn("onDestroyNotify {}\n", ev.window);
     var workspace = getActiveWorkspace();
     wm.WorkspaceRemoveWindow(workspace, ev.window);
+}
+
+fn onEnterNotify(e: *c.XEvent) void {
+    var ev = e.xcrossing;
+    var workspace = getActiveWorkspace();
+    var index = wm.WorkspaceGetWindowIndex(workspace, ev.window);
+    if (index >= 0) {
+        workspace.focusedWindow = index;
+    }
 }
 
 fn onUnmapNotify(e: *c.XEvent) void {
@@ -94,6 +107,7 @@ pub fn onMapRequest(e: *c.XEvent) void {
     wm.WorkspaceAddWindow(getActiveWorkspace(), ev.window);
     // TODO: check if window actually in workspace
     stack(workspace);
+    _ = c.XSelectInput(display, ev.window, c.EnterWindowMask | c.FocusChangeMask);
     _ = c.XMapWindow(display, ev.window);
     _ = c.XSync(display, 1);
 }
@@ -123,7 +137,7 @@ pub fn resize(window: c.Window, x: i32, y: i32, width: i32, height: i32) void {
     _ = c.XConfigureWindow(display, window, c.CWX | c.CWY | c.CWWidth | c.CWHeight, &changes);
 }
 
-pub fn main() !void {
+pub fn main() void {
     display = c.XOpenDisplay(null) orelse {
         panic("unable to create window");
     };
@@ -144,12 +158,13 @@ pub fn main() !void {
     //window = c.XCreateSimpleWindow(display, root, 0, 0, 100, 100, 1, bp, wp);
 
     var windowAttributes: c.XSetWindowAttributes = undefined;
-    //windowAttributes.event_mask = c.SubstructureRedirectMask | c.SubstructureNotifyMask | c.ExposureMask | c.KeyPressMask | c.EnterWindowMask;
     windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask;
-    //_ = c.XChangeWindowAttributes(display, root, c.CWEventMask, &windowAttributes);
     _ = c.XSelectInput(display, root, windowAttributes.event_mask);
+
     //_ = c.XMapWindow(display, root);
     _ = c.XSync(display, 0);
+    var code = c.XKeysymToKeycode(display, c.XK_q);
+    _ = c.XGrabKey(display, code, c.Mod4Mask, root, 1, c.GrabModeAsync, c.GrabModeAsync);
     //_ = c.XGrabServer(display);
 
     var running = true;
@@ -165,26 +180,33 @@ pub fn main() !void {
         switch (e.type) {
             c.Expose => warn("Expose\n"),
             c.KeyPress => {
-                var keyEvent = e.xkey;
-                var keysym = c.XKeycodeToKeysym(display, @intCast(u8, keyEvent.keycode), 0);
-                warn("key event {}\n", keyEvent);
+                var ev = e.xkey;
+                var keysym = c.XKeycodeToKeysym(display, @intCast(u8, ev.keycode), 0);
+                warn("key event {}\n", ev);
+                var workspace = getActiveWorkspace();
 
-                if (keysym == c.XK_q) {
-                    running = false;
-                }
-                if (keysym == c.XK_t) {
-                    const rc = linux.fork();
-                    if (rc == 0) {
-                        var allocator = std.heap.direct_allocator;
-                        warn("Child\n");
-                        _ = try std.ChildProcess.exec(allocator, &[_][]const u8{
-                            "xterm",
-                        }, null, null, 2 * 1024);
-                        warn("after\n");
-                        linux.exit(0);
+                if (ev.state == c.Mod4Mask) {
+                    if (keysym == c.XK_q) {
+                        WindowClose(workspace.windows[@intCast(u32, workspace.focusedWindow)]);
                     }
-                    warn("not child\n");
                 }
+
+                //if (keysym == c.XK_q) {
+                //    //running = false;
+                //}
+                //if (keysym == c.XK_t) {
+                //    const rc = linux.fork();
+                //    if (rc == 0) {
+                //        var allocator = std.heap.direct_allocator;
+                //        warn("Child\n");
+                //        _ = try std.ChildProcess.exec(allocator, &[_][]const u8{
+                //            "xterm",
+                //        }, null, null, 2 * 1024);
+                //        warn("after\n");
+                //        linux.exit(0);
+                //    }
+                //    warn("not child\n");
+                //}
 
                 //running = false;
             },
@@ -200,6 +222,7 @@ pub fn main() !void {
             },
             c.UnmapNotify => onUnmapNotify(&e),
             c.DestroyNotify => onDestroyNotify(&e),
+            c.EnterNotify => onEnterNotify(&e),
             else => warn("not handled {}\n", e.type),
         }
         warn("End loop\n");
