@@ -9,4 +9,11 @@ pub fn build(b: *Builder) void {
 
     const run = b.step("run", "run the program");
     run.dependOn(&exe.run().step);
+
+    const runTests = b.addTest("src/test.zig");
+    runTests.addIncludeDir("/usr/include");
+    runTests.linkSystemLibrary("c");
+    runTests.linkSystemLibrary("x11");
+    const testStep = b.step("test", "Run tests");
+    testStep.dependOn(&runTests.step);
 }
