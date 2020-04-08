@@ -1,5 +1,18 @@
 const std = @import("std");
 
+pub const Screen = struct {
+    info: ScreenInfo,
+    workspaces: [8]Workspace,
+    activeWorkspace: u32,
+};
+
+pub const ScreenInfo = struct {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+};
+
 pub const Workspace = struct {
     windows: [8]u64 = undefined,
     amountOfWindows: u32 = 0,

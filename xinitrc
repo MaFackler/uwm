@@ -1,7 +1,8 @@
 APP=xterm
 export DISPLAY=:30
-sleep 1 && $APP &
-sleep 2 && $APP &
-sleep 3 && $APP &
-sleep 4 && $APP &
+sleep 1 && feh --bg-scale ~/Pictures/Wallpaper.jpg
+# sleep 1 && $APP &
+# sleep 2 && $APP &
+# sleep 3 && $APP &
+# sleep 4 && $APP &
 exec ./zig-cache/bin/uwm

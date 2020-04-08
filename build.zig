@@ -5,6 +5,7 @@ pub fn build(b: *Builder) void {
     exe.addIncludeDir("/usr/include/");
     exe.linkSystemLibrary("c");
     exe.linkSystemLibrary("x11");
+    exe.linkSystemLibrary("xinerama");
     exe.install();
 
     const run = b.step("run", "run the program");
@@ -14,6 +15,7 @@ pub fn build(b: *Builder) void {
     runTests.addIncludeDir("/usr/include");
     runTests.linkSystemLibrary("c");
     runTests.linkSystemLibrary("x11");
+    runTests.linkSystemLibrary("xinerama");
     const testStep = b.step("test", "Run tests");
     testStep.dependOn(&runTests.step);
 }
