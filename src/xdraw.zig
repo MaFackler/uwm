@@ -25,12 +25,23 @@ pub const DrawableWindow = struct {
         _ = c.XSetFillStyle(display, self.gc, c.FillSolid);
     }
 
+    pub fn setColor(self: Self, xscreen: i32) void {
+        var color: c.XColor = undefined;
+        color.red = 32000;
+        color.green = 0;
+        color.blue = 0;
+        color.flags = c.DoRed | c.DoGreen | c.DoBlue;
+        _ = c.XSetForeground(self.display, self.gc, color.pixel);
+        //_ = c.XSetForeground(self.display, self.gc, c.XWhitePixel(self.display, xscreen));
+        //c.XFreeColor(color);
+    }
+
     pub fn fillRect(self: Self, x: i32, y: i32, width: u32, height: u32) void {
-        _ = c.XFillRectangle(self.display, self.drawable, self.gc, 0, 0, 16, 16);
+        _ = c.XFillRectangle(self.display, self.drawable, self.gc, x, y, width, height);
     }
 
     pub fn render(self: Self) void {
-        _ = c.XCopyArea(self.display, self.drawable, self.window, self.gc, 0, 0, self.width, self.height, self.x, self.y);
+        _ = c.XCopyArea(self.display, self.drawable, self.window, self.gc, 0, 0, self.width, self.height, 0, 0);
     }
 
     pub fn delete(self: Self) void {
