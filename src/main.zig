@@ -209,12 +209,6 @@ fn xineramaGetScreenInfo() void {
     }
 }
 
-//_ = c.XSetErrorHandler(errorHandler);
-//extern fn errorHandler(d: ?*c.Display, e: [*c]c.XErrorEvent) c_int {
-//    warn("ERRRROR\n");
-//    return 0;
-//}
-
 pub fn main() void {
     xlib.init();
     defer xlib.init();

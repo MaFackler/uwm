@@ -1,7 +1,5 @@
 const std = @import("std");
 const c = @import("c.zig");
-// TODO: remove config dependency
-const config = @import("config.zig");
 const panic = std.debug.panic;
 
 pub const Xlib = struct {
@@ -9,8 +7,8 @@ pub const Xlib = struct {
     screen: i32 = 0,
     root: c.Window = undefined,
     colormap: c.Colormap = undefined,
-    // TODO: color handling is crap; dynimaic size
-    colors: [config.COLOR_AMOUNT]c.XColor = undefined,
+    // TODO: maybe dynamic array to support more than 16 colors
+    colors: [16]u64 = undefined,
 
     const Self = *Xlib;
     fn init(self: Self) void {
@@ -49,12 +47,13 @@ pub const Xlib = struct {
     }
 
     fn addColor(self: Self, index: usize, r: u8, g: u8, b: u8) void {
-        var xColor: *c.XColor = &self.colors[index];
+        var xColor: c.XColor = undefined;
         xColor.red = @intCast(u16, r) * 255;
         xColor.green = @intCast(u16, g) * 255;
         xColor.blue = @intCast(u16, b) * 255;
         xColor.flags = c.DoRed | c.DoGreen | c.DoBlue;
-        _ = c.XAllocColor(self.display, self.colormap, xColor);
+        _ = c.XAllocColor(self.display, self.colormap, &xColor);
+        self.colors[index] = xColor.pixel;
         // TODO: why does AllocNamedColor not work
         //var name: []const u8 = "red\\0";
         //const name: []const u8 = "red";
@@ -63,7 +62,7 @@ pub const Xlib = struct {
     }
 
     fn setForegroundColor(self: Self, gc: c.GC, index: usize) void {
-        _ = c.XSetForeground(self.display, gc, self.colors[index].pixel);
+        _ = c.XSetForeground(self.display, gc, self.colors[index]);
     }
 
     fn hideWindow(self: Self, window: c.Window) void {
@@ -71,3 +70,9 @@ pub const Xlib = struct {
         _ = c.XMoveWindow(self.display, window, -4000, 0);
     }
 };
+
+//_ = c.XSetErrorHandler(errorHandler);
+//extern fn errorHandler(d: ?*c.Display, e: [*c]c.XErrorEvent) c_int {
+//    warn("ERRRROR\n");
+//    return 0;
+//}
