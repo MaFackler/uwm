@@ -10,8 +10,8 @@ pub const COLOR = enum(u2) {
 };
 pub const COLOR_AMOUNT = @enumToInt(COLOR.AMOUNT);
 
-pub const colors = [COLOR_AMOUNT][3]u16{
-    [_]u16{ 255, 0, 0 },
-    [_]u16{ 11, 11, 11 },
-    [_]u16{ 0, 0, 0 },
+pub const colors = [COLOR_AMOUNT][3]u8{
+    [_]u8{ 255, 0, 0 },
+    [_]u8{ 11, 11, 11 },
+    [_]u8{ 0, 0, 0 },
 };
