@@ -12,40 +12,16 @@ const Allocator = std.mem.Allocator;
 var xlib = X.Xlib{};
 
 // TODO: maybe dynamic arrays
-var activeScreenIndex: u32 = 0;
-var displayWidth: i32 = 0;
-var displayHeight: i32 = 0;
-var screens: [8]wm.Screen = undefined;
 var bar: xdraw.DrawableWindow = undefined;
+var manager: wm.WindowManager = wm.WindowManager{};
 
 //var windows = std.AutoHashMap(u64, Workspace).init(std.heap.direct_allocator);
-
-pub fn isWindowRegistered(window: c.Window) bool {
-    var workspace = getActiveWorkspace();
-    // TODO: array contains??
-    var res = false;
-    for (workspace.windows) |win| {
-        if (win == window) {
-            res = true;
-        }
-    }
-    return res;
-}
-
-fn getActiveScreen() *wm.Screen {
-    var res = &screens[activeScreenIndex];
-    return res;
-}
-
-fn getActiveWorkspace() *wm.Workspace {
-    var screen = getActiveScreen();
-    return &screen.workspaces[screen.activeWorkspace];
-}
 
 pub fn onConfigureRequest(e: *c.XEvent) void {
     var ev = e.xconfigurerequest;
     warn("Configure Request {}\n", ev.window);
-    if (!isWindowRegistered(ev.window)) {
+    var workspace = manager.getActiveScreen().getActiveWorkspace();
+    if (!workspace.hasWindow(ev.window)) {
         warn("Window is not registered\n");
         var changes: c.XWindowChanges = undefined;
         changes.height = e.xconfigurerequest.height;
@@ -61,14 +37,16 @@ pub fn onConfigureRequest(e: *c.XEvent) void {
 pub fn onDestroyNotify(e: *c.XEvent) void {
     var ev = e.xdestroywindow;
     warn("onDestroyNotify {}\n", ev.window);
-    var workspace = getActiveWorkspace();
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
     wm.WorkspaceRemoveWindow(workspace, ev.window);
 }
 
 fn onEnterNotify(e: *c.XEvent) void {
     var ev = e.xcrossing;
     warn("onEnterNotify {}\n", ev.window);
-    var workspace = getActiveWorkspace();
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
     var index = wm.WorkspaceGetWindowIndex(workspace, ev.window);
     if (index >= 0) {
         workspace.focusedWindow = index;
@@ -78,9 +56,9 @@ fn onEnterNotify(e: *c.XEvent) void {
 fn onUnmapNotify(e: *c.XEvent) void {
     var ev = e.xunmap;
     warn("onUnmapNotify {}\n", ev.window);
-    var workspace = getActiveWorkspace();
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
     wm.WorkspaceRemoveWindow(workspace, ev.window);
-    var screen = getActiveScreen();
     stack(workspace, screen.info.width, screen.info.height);
 }
 
@@ -110,9 +88,10 @@ pub fn stack(workspace: *wm.Workspace, width: u32, height: u32) void {
 pub fn onMapRequest(e: *c.XEvent) void {
     var ev = e.xmap;
     warn("map request {}\n", ev.window);
-    var workspace = getActiveWorkspace();
-    var screen = getActiveScreen();
-    wm.WorkspaceAddWindow(getActiveWorkspace(), ev.window);
+
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
+    wm.WorkspaceAddWindow(workspace, ev.window);
     // TODO: check if window actually in workspace
     stack(workspace, screen.info.width, screen.info.height - bar.height);
     _ = c.XSelectInput(xlib.display, ev.window, c.EnterWindowMask | c.FocusChangeMask);
@@ -155,19 +134,19 @@ fn run(cmd: []const []const u8) !void {
 }
 
 fn showTag(index: u32) void {
-    var screen = getActiveScreen();
-    var workspace = getActiveWorkspace();
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
     for (workspace.windows[0..workspace.amountOfWindows]) |window| {
         xlib.hideWindow(window);
     }
     screen.activeWorkspace = index;
-    workspace = getActiveWorkspace();
+    workspace = screen.getActiveWorkspace();
     stack(workspace, screen.info.width, screen.info.height - bar.height);
     drawBar();
 }
 
 fn drawBar() void {
-    var screen = getActiveScreen();
+    var screen = manager.getActiveScreen();
 
     var buttonSize: u32 = 16;
     for (screen.workspaces) |workspace, i| {
@@ -201,10 +180,10 @@ fn xineramaGetScreenInfo() void {
         var i: u32 = 0;
         while (i < @intCast(u32, numScreens)) : (i += 1) {
             warn("info {}\n", screenInfo[i]);
-            screens[i].info.x = @intCast(i32, screenInfo[i].x_org);
-            screens[i].info.y = @intCast(i32, screenInfo[i].y_org);
-            screens[i].info.width = @intCast(u32, screenInfo[i].width);
-            screens[i].info.height = @intCast(u32, screenInfo[i].height);
+            manager.screens[i].info.x = @intCast(i32, screenInfo[i].x_org);
+            manager.screens[i].info.y = @intCast(i32, screenInfo[i].y_org);
+            manager.screens[i].info.width = @intCast(u32, screenInfo[i].width);
+            manager.screens[i].info.height = @intCast(u32, screenInfo[i].height);
         }
     }
 }
@@ -224,7 +203,7 @@ pub fn main() void {
 
     xineramaGetScreenInfo();
 
-    var screen = getActiveScreen();
+    var screen = manager.getActiveScreen();
 
     var barheight: u32 = 16;
     bar = xdraw.DrawableWindow{
@@ -243,12 +222,14 @@ pub fn main() void {
     while (running) {
         var e: c.XEvent = undefined;
         _ = c.XNextEvent(xlib.display, &e);
+
+        // TODO: maybe pass active screen and workspace to event handling methods
         switch (e.type) {
             c.Expose => onExpose(&e),
             c.KeyPress => {
                 var ev = e.xkey;
                 var keysym = c.XKeycodeToKeysym(xlib.display, @intCast(u8, ev.keycode), 0);
-                var workspace = getActiveWorkspace();
+                var workspace = screen.getActiveWorkspace();
 
                 if (ev.state == c.Mod4Mask) {
                     if (keysym == c.XK_q) {

@@ -1,9 +1,27 @@
 const std = @import("std");
 
+pub const WindowManager = struct {
+    activeScreenIndex: u32 = 0,
+    displayWidth: i32 = 0,
+    displayHeight: i32 = 0,
+    screens: [8]Screen = undefined,
+
+    const Self = *WindowManager;
+    fn getActiveScreen(self: Self) *Screen {
+        var res = &self.screens[self.activeScreenIndex];
+        return res;
+    }
+};
+
 pub const Screen = struct {
     info: ScreenInfo,
     workspaces: [8]Workspace,
     activeWorkspace: u32,
+
+    const Self = *Screen;
+    fn getActiveWorkspace(self: Self) *Workspace {
+        return &self.workspaces[self.activeWorkspace];
+    }
 };
 
 pub const ScreenInfo = struct {
@@ -17,6 +35,19 @@ pub const Workspace = struct {
     windows: [8]u64 = undefined,
     amountOfWindows: u32 = 0,
     focusedWindow: i32 = 0,
+
+    const Self = *Workspace;
+    fn hasWindow(self: Self, window: u64) bool {
+        // TODO: array contains??
+        var res = false;
+        for (self.windows) |win| {
+            if (win == window) {
+                res = true;
+                break;
+            }
+        }
+        return res;
+    }
 };
 
 pub fn WorkspaceGetWindowIndex(workspace: *Workspace, window: u64) i32 {
