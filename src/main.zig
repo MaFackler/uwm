@@ -129,6 +129,8 @@ pub fn resize(window: c.Window, x: i32, y: i32, width: u32, height: u32) void {
 pub fn drawBar() void {
     var screen = manager.getActiveScreen();
 
+    xlib.setForegroundColor(bar.gc, @enumToInt(config.COLOR.BACKGROUND));
+    bar.fillRect(0, 0, bar.width, bar.height);
     var buttonSize: u32 = 16;
     for (screen.workspaces) |workspace, i| {
         var color = config.COLOR.FOREGROUND_NOFOCUS;
