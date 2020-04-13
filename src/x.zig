@@ -69,6 +69,10 @@ pub const Xlib = struct {
         // TODO: better way to hide
         _ = c.XMoveWindow(self.display, window, -4000, 0);
     }
+
+    fn focusWindow(self: Self, window: c.Window) void {
+        _ = c.XSetInputFocus(self.display, window, c.PointerRoot, c.CurrentTime);
+    }
 };
 
 //_ = c.XSetErrorHandler(errorHandler);

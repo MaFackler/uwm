@@ -143,6 +143,7 @@ fn showTag(index: u32) void {
     workspace = screen.getActiveWorkspace();
     stack(workspace, screen.info.width, screen.info.height - bar.height);
     drawBar();
+    xlib.focusWindow(xlib.root);
 }
 
 fn drawBar() void {
@@ -165,6 +166,10 @@ fn drawBar() void {
 fn onExpose(e: *c.XEvent) void {
     warn("on expose\n");
     drawBar();
+}
+
+fn onFocusIn(e: *c.XEvent) void {
+    var ev = e.xfocus;
 }
 
 fn xineramaGetScreenInfo() void {
@@ -256,7 +261,7 @@ pub fn main() void {
             c.UnmapNotify => onUnmapNotify(&e),
             c.DestroyNotify => onDestroyNotify(&e),
             c.EnterNotify => onEnterNotify(&e),
-            c.FocusIn => warn("FocusIn\n"),
+            c.FocusIn => onFocusIn(&e),
             c.NoExpose => warn("NoExpose\n"),
             else => warn("not handled {}\n", e.type),
         }
