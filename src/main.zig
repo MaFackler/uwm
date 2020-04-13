@@ -6,16 +6,16 @@ const wm = @import("wm.zig");
 const xdraw = @import("xdraw.zig");
 const warn = std.debug.warn;
 const panic = std.debug.panic;
-const linux = std.os.linux;
 
 const Allocator = std.mem.Allocator;
-var xlib = X.Xlib{};
+pub var xlib = X.Xlib{};
 
 // TODO: maybe dynamic arrays
 var bar: xdraw.DrawableWindow = undefined;
-var manager: wm.WindowManager = wm.WindowManager{};
+pub var manager: wm.WindowManager = wm.WindowManager{};
 
 //var windows = std.AutoHashMap(u64, Workspace).init(std.heap.direct_allocator);
+
 
 pub fn onConfigureRequest(e: *c.XEvent) void {
     var ev = e.xconfigurerequest;
@@ -124,29 +124,9 @@ pub fn resize(window: c.Window, x: i32, y: i32, width: u32, height: u32) void {
     _ = c.XConfigureWindow(xlib.display, window, c.CWX | c.CWY | c.CWWidth | c.CWHeight, &changes);
 }
 
-fn run(cmd: []const []const u8) !void {
-    const rc = linux.fork();
-    if (rc == 0) {
-        var allocator = std.heap.direct_allocator;
-        _ = try std.ChildProcess.exec(allocator, cmd, null, null, 2 * 1024);
-        linux.exit(0);
-    }
-}
 
-fn showTag(index: u32) void {
-    var screen = manager.getActiveScreen();
-    var workspace = screen.getActiveWorkspace();
-    for (workspace.windows[0..workspace.amountOfWindows]) |window| {
-        xlib.hideWindow(window);
-    }
-    screen.activeWorkspace = index;
-    workspace = screen.getActiveWorkspace();
-    stack(workspace, screen.info.width, screen.info.height - bar.height);
-    drawBar();
-    xlib.focusWindow(xlib.root);
-}
 
-fn drawBar() void {
+pub fn drawBar() void {
     var screen = manager.getActiveScreen();
 
     var buttonSize: u32 = 16;
@@ -202,6 +182,10 @@ pub fn main() void {
     xlib.grabKey(c.Mod4Mask, c.XK_1);
     xlib.grabKey(c.Mod4Mask, c.XK_2);
 
+    for (config.keys) |key| {
+        xlib.grabKey(key.modifier, key.keysym);
+    }
+
     for (config.colors) |color, i| {
         xlib.addColor(i, color[0], color[1], color[2]);
     }
@@ -221,10 +205,10 @@ pub fn main() void {
 
     defer bar.delete();
 
-    var running = true;
+    manager.running = true;
     warn("root is {}\n", xlib.root);
 
-    while (running) {
+    while (manager.running) {
         var e: c.XEvent = undefined;
         _ = c.XNextEvent(xlib.display, &e);
 
@@ -236,17 +220,13 @@ pub fn main() void {
                 var keysym = c.XKeycodeToKeysym(xlib.display, @intCast(u8, ev.keycode), 0);
                 var workspace = screen.getActiveWorkspace();
 
-                if (ev.state == c.Mod4Mask) {
-                    if (keysym == c.XK_q) {
-                        xlib.closeWindow(workspace.windows[@intCast(u32, workspace.focusedWindow)]);
-                    } else if (keysym == c.XK_k) {
-                        running = false;
-                    } else if (keysym == c.XK_p) {
-                        var err = run([_][]const u8{ "rofi", "-show", "run" });
-                    } else if (keysym >= c.XK_1 and keysym <= c.XK_8) {
-                        showTag(@intCast(u32, keysym - c.XK_1));
+                for (config.keys) |key| {
+                    if (ev.state == key.modifier and keysym == key.keysym) {
+                        key.action(key.arg);
+                        break;
                     }
                 }
+
             },
             c.ConfigureRequest => {
                 onConfigureRequest(&e);

@@ -5,6 +5,7 @@ pub const WindowManager = struct {
     displayWidth: i32 = 0,
     displayHeight: i32 = 0,
     screens: [8]Screen = undefined,
+    running: bool = false,
 
     const Self = *WindowManager;
     fn getActiveScreen(self: Self) *Screen {

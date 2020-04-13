@@ -37,7 +37,7 @@ pub const Xlib = struct {
         displayHeight = @intCast(u32, c.XDisplayHeight(display, xscreen));
     }
 
-    fn grabKey(self: Self, mask: u32, key: u32) void {
+    fn grabKey(self: Self, mask: u32, key: c.KeySym) void {
         var code = c.XKeysymToKeycode(self.display, key);
         _ = c.XGrabKey(self.display, code, mask, self.root, 1, c.GrabModeAsync, c.GrabModeAsync);
     }
