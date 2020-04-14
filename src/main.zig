@@ -11,7 +11,8 @@ const Allocator = std.mem.Allocator;
 pub var xlib = X.Xlib{};
 
 // TODO: maybe dynamic arrays
-var bar: xdraw.DrawableWindow = undefined;
+var bar: c.Window = undefined;
+var bardraw: xdraw.Draw = undefined;
 pub var manager: wm.WindowManager = wm.WindowManager{};
 
 //var windows = std.AutoHashMap(u64, Workspace).init(std.heap.direct_allocator);
@@ -60,7 +61,7 @@ fn onUnmapNotify(e: *c.XEvent) void {
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
     workspace.removeWindow(ev.window);
-    stack(workspace, screen.info.width, screen.info.height - bar.height);
+    stack(workspace, screen.info.width, screen.info.height - xlib.getWindowHeight(bar));
 }
 
 pub fn stack(workspace: *wm.Workspace, width: u32, height: u32) void {
@@ -94,7 +95,8 @@ pub fn onMapRequest(e: *c.XEvent) void {
     var workspace = screen.getActiveWorkspace();
     workspace.addWindow(ev.window);
     // TODO: check if window actually in workspace
-    stack(workspace, screen.info.width, screen.info.height - bar.height);
+    var h = xlib.getWindowHeight(bar);
+    stack(workspace, screen.info.width, screen.info.height - xlib.getWindowHeight(bar));
     _ = c.XSelectInput(xlib.display, ev.window, c.EnterWindowMask | c.FocusChangeMask);
     _ = c.XMapWindow(xlib.display, ev.window);
     _ = c.XSync(xlib.display, 1);
@@ -130,8 +132,10 @@ pub fn resize(window: c.Window, x: i32, y: i32, width: u32, height: u32) void {
 
 pub fn drawBar() void {
     var screen = manager.getActiveScreen();
-    xlib.setForegroundColor(bar.gc, @enumToInt(config.COLOR.BACKGROUND));
-    bar.fillRect(0, 0, bar.width, bar.height);
+    var w = xlib.getWindowWidth(bar);
+    var barheight = xlib.getWindowHeight(bar);
+    bardraw.setColor(@enumToInt(config.COLOR.BACKGROUND));
+    bardraw.fillRect(0, 0, w, barheight);
     // TODO: get height of font
     var buttonSize: u32 = 16;
     for (screen.workspaces) |workspace, i| {
@@ -139,11 +143,11 @@ pub fn drawBar() void {
         if (i == screen.activeWorkspace) {
             color = config.COLOR.FOREGROUND_FOCUS;
         }
-        xlib.setForegroundColor(bar.gc, @enumToInt(color));
+        bardraw.setColor(@enumToInt(color));
 
         var mul = @intCast(u32, i);
-        bar.fillRect(@intCast(i32, buttonSize * mul) + 1, 1, buttonSize - 2, buttonSize - 2);
-        bar.render();
+        bardraw.fillRect(@intCast(i32, buttonSize * mul) + 1, 1, buttonSize - 2, buttonSize - 2);
+        bardraw.render();
     }
     var workspace = screen.getActiveWorkspace();
 
@@ -158,7 +162,7 @@ pub fn drawBar() void {
         warn("window name is {s}\n", name);
         defer xlib.freeWindowName(&prop);
 
-        bar.drawText(xlib.font, bar.window, @intCast(i32, @divFloor(bar.width, 2)), 12, name[0..prop.nitems]);
+        bardraw.drawText(xlib.font, @intCast(i32, @divFloor(w, 2)), 12, name[0..prop.nitems]);
     }
 
 }
@@ -212,24 +216,20 @@ pub fn main() void {
         xlib.grabKey(key.modifier, key.keysym);
     }
 
-    for (config.colors) |color, i| {
-        xlib.addColor(i, color[0], color[1], color[2]);
-    }
 
     xineramaGetScreenInfo();
 
     var screen = manager.getActiveScreen();
 
     var barheight: u32 = 16;
-    bar = xdraw.DrawableWindow{
-        .x = 0,
-        .y = @intCast(i32, screen.info.height - barheight - 1),
-        .height = barheight,
-        .width = screen.info.width,
-    };
-    bar.init(xlib.display, xlib.root, xlib.screen);
+    var barwidth: u32 = screen.info.width;
+    bar = xlib.createWindow(0, @intCast(i32, screen.info.height - barheight - 1), barwidth, barheight);
+    bardraw.init(xlib.display, bar, xlib.screen, barwidth, barheight);
+    defer bardraw.free();
 
-    defer bar.delete();
+    for (config.colors) |color, i| {
+        bardraw.addColor(i, color[0], color[1], color[2]);
+    }
 
     manager.running = true;
     warn("root is {}\n", xlib.root);

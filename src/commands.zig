@@ -4,6 +4,8 @@ const main = @import("main.zig");
 const linux = std.os.linux;
 
 pub fn windowClose(arg: config.Arg) void {
+    // TODO: window close not working if opening 3 terms with key combination
+    // and close immediately with key combination
     var workspace = main.manager.getActiveScreen().getActiveWorkspace();
     main.xlib.closeWindow(workspace.windows[@intCast(u32, workspace.focusedWindow)]);
     // TODO: remove from workspace

@@ -6,10 +6,7 @@ pub const Xlib = struct {
     display: *c.Display = undefined,
     screen: i32 = 0,
     root: c.Window = undefined,
-    colormap: c.Colormap = undefined,
     font: *c.XftFont = undefined,
-    // TODO: maybe dynamic array to support more than 16 colors
-    colors: [16]u64 = undefined,
 
     const Self = *Xlib;
     fn init(self: Self) void {
@@ -18,7 +15,6 @@ pub const Xlib = struct {
         };
         self.screen = c.XDefaultScreen(self.display);
         self.root = c.XRootWindow(self.display, self.screen);
-        self.colormap = c.XDefaultColormap(self.display, self.screen);
         var fontname: []const u8 = "Ubuntu";
         self.font = c.XftFontOpenName(self.display, self.screen, fontname.ptr);
         if (self.font == undefined) {
@@ -53,24 +49,7 @@ pub const Xlib = struct {
         _ = c.XKillClient(self.display, window);
     }
 
-    fn addColor(self: Self, index: usize, r: u8, g: u8, b: u8) void {
-        var xColor: c.XColor = undefined;
-        xColor.red = @intCast(u16, r) * 255;
-        xColor.green = @intCast(u16, g) * 255;
-        xColor.blue = @intCast(u16, b) * 255;
-        xColor.flags = c.DoRed | c.DoGreen | c.DoBlue;
-        _ = c.XAllocColor(self.display, self.colormap, &xColor);
-        self.colors[index] = xColor.pixel;
-        // TODO: why does AllocNamedColor not work
-        //var name: []const u8 = "red\\0";
-        //const name: []const u8 = "red";
-        //const namePtr: [*]const u8 = name.ptr;
-        //var res = c.XAllocNamedColor(display, colormap, namePtr, &color, &color);
-    }
 
-    fn setForegroundColor(self: Self, gc: c.GC, index: usize) void {
-        _ = c.XSetForeground(self.display, gc, self.colors[index]);
-    }
 
     fn hideWindow(self: Self, window: c.Window) void {
         // TODO: better way to hide
@@ -93,6 +72,55 @@ pub const Xlib = struct {
     fn freeWindowName(self: Self, textProperty: *c.XTextProperty) void {
         _ = c.XFree(textProperty.value);
         //_ = c.XFree(textProperty);
+    }
+
+    fn createWindow(self: Self, x: i32, y: i32, width: u32, height: u32) c.Window {
+        var attributes: c.XSetWindowAttributes = undefined;
+        attributes.background_pixel = c.ParentRelative;
+        attributes.event_mask = c.ButtonPressMask | c.ExposureMask;
+        var res = c.XCreateWindow(self.display,
+                                  self.root,
+                                  x, y,
+                                  width, height,
+                                  0,
+                                  c.XDefaultDepth(self.display, self.screen),
+                                  c.CopyFromParent,
+                                  c.XDefaultVisual(self.display, self.screen),
+                                  c.CWEventMask | c.CWBackPixel,
+                                  &attributes);
+        _ = c.XMapWindow(self.display, res);
+        return res;
+    }
+
+    fn getWindowWidth(self: Self, window: c.Window) u32 {
+        var rootReturn: c.Window = undefined;
+        var x: c_int = 0;
+        var y: c_int = 0;
+        var width: c_uint = 0;
+        var height: c_uint = 0;
+        var borderWidth: c_uint = 0;
+        var depth: c_uint = 0;
+        _ = c.XGetGeometry(self.display, window, &rootReturn,
+                           &x, &y,
+                           &width, &height,
+                           &borderWidth, &depth);
+        return width;
+    }
+
+    fn getWindowHeight(self: Self, window: c.Window) u32 {
+        var rootReturn: c.Window = undefined;
+        var x: c_int = 0;
+        var y: c_int = 0;
+        var width: c_uint = 0;
+        var height: c_uint = 0;
+        var borderWidth: c_uint = 0;
+        var depth: c_uint = 0;
+        _ = c.XGetGeometry(self.display, window, &rootReturn,
+                           &x, &y,
+                           &width, &height,
+                           &borderWidth, &depth);
+        std.debug.warn("hey {} {}\n", width, height);
+        return height;
     }
 };
 

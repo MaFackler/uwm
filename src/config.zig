@@ -38,8 +38,9 @@ pub const colors = [COLOR_AMOUNT][3]u8{
 };
 
 pub var keys = [_]KeyDef{
+    // TODO bug with mask and same key?
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_q, .action = commands.windowClose, .arg = undefined},
-    KeyDef{ .modifier = c.Mod4Mask | c.ShiftMask, .keysym = c.XK_q, .action = commands.exit, .arg = undefined},
+    KeyDef{ .modifier = c.Mod4Mask | c.ShiftMask, .keysym = c.XK_e, .action = commands.exit, .arg = undefined},
 
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_1, .action = commands.workspaceShow, .arg = Arg{.UInt=0}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_2, .action = commands.workspaceShow, .arg = Arg{.UInt=1}},
