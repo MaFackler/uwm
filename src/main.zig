@@ -49,8 +49,9 @@ fn onEnterNotify(e: *c.XEvent) void {
     var workspace = screen.getActiveWorkspace();
     var index = wm.WorkspaceGetWindowIndex(workspace, ev.window);
     if (index >= 0) {
-        workspace.focusedWindow = index;
+        workspace.focusedWindow = @intCast(u32, index);
     }
+    drawBar();
 }
 
 fn onUnmapNotify(e: *c.XEvent) void {
@@ -59,7 +60,7 @@ fn onUnmapNotify(e: *c.XEvent) void {
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
     wm.WorkspaceRemoveWindow(workspace, ev.window);
-    stack(workspace, screen.info.width, screen.info.height);
+    stack(workspace, screen.info.width, screen.info.height - bar.height);
 }
 
 pub fn stack(workspace: *wm.Workspace, width: u32, height: u32) void {
@@ -97,6 +98,7 @@ pub fn onMapRequest(e: *c.XEvent) void {
     _ = c.XSelectInput(xlib.display, ev.window, c.EnterWindowMask | c.FocusChangeMask);
     _ = c.XMapWindow(xlib.display, ev.window);
     _ = c.XSync(xlib.display, 1);
+    drawBar();
 }
 
 pub fn sendConfigureEvent(window: c.Window) void {
@@ -128,9 +130,9 @@ pub fn resize(window: c.Window, x: i32, y: i32, width: u32, height: u32) void {
 
 pub fn drawBar() void {
     var screen = manager.getActiveScreen();
-
     xlib.setForegroundColor(bar.gc, @enumToInt(config.COLOR.BACKGROUND));
     bar.fillRect(0, 0, bar.width, bar.height);
+    // TODO: get height of font
     var buttonSize: u32 = 16;
     for (screen.workspaces) |workspace, i| {
         var color = config.COLOR.FOREGROUND_NOFOCUS;
@@ -143,6 +145,22 @@ pub fn drawBar() void {
         bar.fillRect(@intCast(i32, buttonSize * mul) + 1, 1, buttonSize - 2, buttonSize - 2);
         bar.render();
     }
+    var workspace = screen.getActiveWorkspace();
+
+    if (workspace.amountOfWindows > 0) {
+        // TODO: usize
+        var window = workspace.windows[@intCast(u32, workspace.focusedWindow)];
+        var prop: c.XTextProperty = undefined;
+        xlib.getWindowName(window, &prop);
+        var name: [256]u8 = undefined;
+        warn("prop is {}\n", prop);
+        @memcpy(&name, prop.value, prop.nitems);
+        warn("window name is {s}\n", name);
+        defer xlib.freeWindowName(&prop);
+
+        bar.drawText(xlib.font, bar.window, @intCast(i32, @divFloor(bar.width, 2)), 12, name[0..prop.nitems]);
+    }
+
 }
 
 fn onExpose(e: *c.XEvent) void {
@@ -150,8 +168,14 @@ fn onExpose(e: *c.XEvent) void {
     drawBar();
 }
 
+fn onNoExpose(e: *c.XEvent) void {
+    //warn("on noexpose\n");
+    //drawBar();
+}
+
 fn onFocusIn(e: *c.XEvent) void {
     var ev = e.xfocus;
+    //drawBar();
 }
 
 fn xineramaGetScreenInfo() void {
@@ -210,6 +234,7 @@ pub fn main() void {
     manager.running = true;
     warn("root is {}\n", xlib.root);
 
+
     while (manager.running) {
         var e: c.XEvent = undefined;
         _ = c.XNextEvent(xlib.display, &e);
@@ -244,7 +269,7 @@ pub fn main() void {
             c.DestroyNotify => onDestroyNotify(&e),
             c.EnterNotify => onEnterNotify(&e),
             c.FocusIn => onFocusIn(&e),
-            c.NoExpose => warn("NoExpose\n"),
+            c.NoExpose => onNoExpose(&e),
             else => warn("not handled {}\n", e.type),
         }
     }

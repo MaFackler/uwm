@@ -50,6 +50,8 @@ pub var keys = [_]KeyDef{
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_7, .action = commands.workspaceShow, .arg = Arg{.UInt=6}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_8, .action = commands.workspaceShow, .arg = Arg{.UInt=7}},
 
+    // TODO: use environment variables for term, browser, launcher
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_p, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"rofi", "-show", "run"}}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_Return, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"alacritty"}}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_b, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"chromium"}}},
 };

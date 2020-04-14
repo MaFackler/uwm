@@ -7,6 +7,7 @@ pub const Xlib = struct {
     screen: i32 = 0,
     root: c.Window = undefined,
     colormap: c.Colormap = undefined,
+    font: *c.XftFont = undefined,
     // TODO: maybe dynamic array to support more than 16 colors
     colors: [16]u64 = undefined,
 
@@ -18,6 +19,12 @@ pub const Xlib = struct {
         self.screen = c.XDefaultScreen(self.display);
         self.root = c.XRootWindow(self.display, self.screen);
         self.colormap = c.XDefaultColormap(self.display, self.screen);
+        var fontname: []const u8 = "Ubuntu";
+        self.font = c.XftFontOpenName(self.display, self.screen, fontname.ptr);
+        if (self.font == undefined) {
+            panic("could not load font");
+        }
+
 
         var windowAttributes: c.XSetWindowAttributes = undefined;
         windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask | c.EnterWindowMask | c.FocusChangeMask | c.PropertyChangeMask;
@@ -72,6 +79,20 @@ pub const Xlib = struct {
 
     fn focusWindow(self: Self, window: c.Window) void {
         _ = c.XSetInputFocus(self.display, window, c.PointerRoot, c.CurrentTime);
+    }
+    
+    // TODO: API is crap -> string handling?
+    fn getWindowName(self: Self, window: c.Window, textProperty: *c.XTextProperty) void {
+        var name: []const u8 = "_NET_WM_NAME";
+        var atom = c.XInternAtom(self.display, name.ptr, 0);
+        std.debug.warn("ATOM IS {}\n", atom);
+        var res = c.XGetTextProperty(self.display, window, textProperty, atom);
+        std.debug.assert(res != 0);
+    }
+
+    fn freeWindowName(self: Self, textProperty: *c.XTextProperty) void {
+        _ = c.XFree(textProperty.value);
+        //_ = c.XFree(textProperty);
     }
 };
 

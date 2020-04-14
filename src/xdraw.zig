@@ -36,6 +36,29 @@ pub const DrawableWindow = struct {
         //c.XFreeColor(color);
     }
 
+    pub fn drawText(self: Self, font: *c.XftFont, window: c.Window, x: i32, y: i32, text: []const u8) void {
+        var renderColor: c.XRenderColor = undefined;
+        // TODO: use defined colors
+        renderColor.red = 65535;
+        renderColor.green = 0;
+        renderColor.blue = 0;
+        renderColor.alpha = 65535;
+        var draw: *c.XftDraw = undefined;
+        var visual = c.XDefaultVisual(self.display, 0);
+        var colormap = c.XDefaultColormap(self.display, 0);
+
+        var xftColor: c.XftColor = undefined;
+        _ = c.XftColorAllocValue(self.display, visual, colormap, &renderColor, &xftColor);
+        defer c.XftColorFree(self.display, visual, colormap, &xftColor);
+
+        draw = c.XftDrawCreate(self.display, window, visual, colormap).?;
+        defer c.XftDrawDestroy(draw);
+
+        c.XftDrawString8(draw, &xftColor, font, x, y, text.ptr, @intCast(i32, text.len));
+        
+
+    }
+
     pub fn fillRect(self: Self, x: i32, y: i32, width: u32, height: u32) void {
         _ = c.XFillRectangle(self.display, self.drawable, self.gc, x, y, width, height);
     }

@@ -35,7 +35,7 @@ pub const ScreenInfo = struct {
 pub const Workspace = struct {
     windows: [8]u64 = undefined,
     amountOfWindows: u32 = 0,
-    focusedWindow: i32 = 0,
+    focusedWindow: u32 = 0,
 
     const Self = *Workspace;
     fn hasWindow(self: Self, window: u64) bool {
@@ -74,6 +74,9 @@ pub fn WorkspaceRemoveWindow(workspace: *Workspace, window: u64) void {
     }
     std.debug.warn("index is {}\n", removeIndex);
 
+    if (removeIndex == workspace.focusedWindow) {
+        workspace.focusedWindow = 0;
+    }
     if (found) {
         for (workspace.windows[removeIndex..workspace.amountOfWindows]) |win, i| {
             var index = removeIndex + i;
@@ -86,5 +89,6 @@ pub fn WorkspaceRemoveWindow(workspace: *Workspace, window: u64) void {
 pub fn WorkspaceAddWindow(workspace: *Workspace, window: u64) void {
     // TODO: overflow of windows array
     workspace.windows[workspace.amountOfWindows] = window;
+    workspace.focusedWindow = workspace.amountOfWindows;
     workspace.amountOfWindows += 1;
 }
