@@ -49,46 +49,51 @@ pub const Workspace = struct {
         }
         return res;
     }
+
+    fn getWindowIndex(self: Self, window: u64) i32 {
+        var res: i32 = -1;
+        for (self.windows) |win, i| {
+            if (win == window) {
+                res = @intCast(i32, i);
+                break;
+            }
+        }
+        return res;
+    }
+
+    fn removeWindow(self: Self, window: u64) void {
+        var removeIndex: usize = 0;
+        var found = false;
+        for (self.windows) |win, i| {
+            if (win == window) {
+                removeIndex = i;
+                found = true;
+                break;
+            }
+        }
+        std.debug.warn("index is {}\n", removeIndex);
+
+        if (removeIndex == self.focusedWindow) {
+            self.focusedWindow = 0;
+        } else if (removeIndex < self.focusedWindow) {
+            self.focusedWindow -= 1;
+        }
+        
+        if (found) {
+            for (self.windows[removeIndex..self.amountOfWindows]) |win, i| {
+                var index = removeIndex + i;
+                self.windows[index] = self.windows[index + 1];
+            }
+            self.amountOfWindows -= 1;
+        }
+    }
+
+    fn addWindow(self: Self, window: u64) void {
+        // TODO: overflow of windows array
+        self.windows[self.amountOfWindows] = window;
+        self.focusedWindow = self.amountOfWindows;
+        self.amountOfWindows += 1;
+    }
+
 };
 
-pub fn WorkspaceGetWindowIndex(workspace: *Workspace, window: u64) i32 {
-    var res: i32 = -1;
-    for (workspace.windows) |win, i| {
-        if (win == window) {
-            res = @intCast(i32, i);
-            break;
-        }
-    }
-    return res;
-}
-
-pub fn WorkspaceRemoveWindow(workspace: *Workspace, window: u64) void {
-    var removeIndex: usize = 0;
-    var found = false;
-    for (workspace.windows) |win, i| {
-        if (win == window) {
-            removeIndex = i;
-            found = true;
-            break;
-        }
-    }
-    std.debug.warn("index is {}\n", removeIndex);
-
-    if (removeIndex == workspace.focusedWindow) {
-        workspace.focusedWindow = 0;
-    }
-    if (found) {
-        for (workspace.windows[removeIndex..workspace.amountOfWindows]) |win, i| {
-            var index = removeIndex + i;
-            workspace.windows[index] = workspace.windows[index + 1];
-        }
-        workspace.amountOfWindows -= 1;
-    }
-}
-
-pub fn WorkspaceAddWindow(workspace: *Workspace, window: u64) void {
-    // TODO: overflow of windows array
-    workspace.windows[workspace.amountOfWindows] = window;
-    workspace.focusedWindow = workspace.amountOfWindows;
-    workspace.amountOfWindows += 1;
-}

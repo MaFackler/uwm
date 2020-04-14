@@ -39,7 +39,7 @@ pub fn onDestroyNotify(e: *c.XEvent) void {
     warn("onDestroyNotify {}\n", ev.window);
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    wm.WorkspaceRemoveWindow(workspace, ev.window);
+    workspace.removeWindow(ev.window);
 }
 
 fn onEnterNotify(e: *c.XEvent) void {
@@ -47,7 +47,7 @@ fn onEnterNotify(e: *c.XEvent) void {
     warn("onEnterNotify {}\n", ev.window);
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    var index = wm.WorkspaceGetWindowIndex(workspace, ev.window);
+    var index = workspace.getWindowIndex(ev.window);
     if (index >= 0) {
         workspace.focusedWindow = @intCast(u32, index);
     }
@@ -59,7 +59,7 @@ fn onUnmapNotify(e: *c.XEvent) void {
     warn("onUnmapNotify {}\n", ev.window);
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    wm.WorkspaceRemoveWindow(workspace, ev.window);
+    workspace.removeWindow(ev.window);
     stack(workspace, screen.info.width, screen.info.height - bar.height);
 }
 
@@ -92,7 +92,7 @@ pub fn onMapRequest(e: *c.XEvent) void {
 
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    wm.WorkspaceAddWindow(workspace, ev.window);
+    workspace.addWindow(ev.window);
     // TODO: check if window actually in workspace
     stack(workspace, screen.info.width, screen.info.height - bar.height);
     _ = c.XSelectInput(xlib.display, ev.window, c.EnterWindowMask | c.FocusChangeMask);
