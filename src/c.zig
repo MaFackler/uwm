@@ -1,4 +1,5 @@
 pub usingnamespace @cImport({
+    @cInclude("stdio.h");
     @cInclude("X11/Xlib.h");
     @cInclude("X11/Xutil.h");
     @cInclude("X11/Xft/Xft.h");

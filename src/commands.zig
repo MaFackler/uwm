@@ -4,11 +4,10 @@ const main = @import("main.zig");
 const linux = std.os.linux;
 
 pub fn windowClose(arg: config.Arg) void {
-    // TODO: window close not working if opening 3 terms with key combination
-    // and close immediately with key combination
     var workspace = main.manager.getActiveScreen().getActiveWorkspace();
-    main.xlib.closeWindow(workspace.windows[@intCast(u32, workspace.focusedWindow)]);
-    // TODO: remove from workspace
+    var window = workspace.getFocusedWindow();
+    main.xlib.closeWindow(window);
+    workspace.removeWindow(window);
 }
 
 pub fn run(arg: config.Arg) void {
@@ -20,6 +19,18 @@ pub fn run(arg: config.Arg) void {
         var e = std.ChildProcess.exec(allocator, cmd, null, null, 2 * 1024);
         linux.exit(0);
     }
+}
+
+pub fn notify(arg: config.Arg) void {
+    var msg = arg.String;
+    var cmd = [_][]const u8{
+        "notify-send",
+        "-t",
+        "1000",
+        msg,
+    };
+    var argToPass = config.Arg{.StringList=&cmd};
+    run(argToPass);
 }
 
 pub fn exit(arg: config.Arg) void {
@@ -38,8 +49,8 @@ pub fn workspaceShow(arg: config.Arg) void {
     }
     screen.activeWorkspace = index;
     workspace = screen.getActiveWorkspace();
-    // TODO: bar height
-    main.stack(workspace, screen.info.width, screen.info.height - 16);
+    main.layouts[main.manager.activeScreenIndex].stack(workspace, &main.xlib);
     main.drawBar();
     main.xlib.focusWindow(main.xlib.root);
 }
+

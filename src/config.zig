@@ -9,6 +9,7 @@ pub const Arg = union {
     UInt: u32,
     float: f32,
     StringList: [][]const u8,
+    String: []const u8,
 };
 
 const Action = struct {
@@ -38,9 +39,8 @@ pub const colors = [COLOR_AMOUNT][3]u8{
 };
 
 pub var keys = [_]KeyDef{
-    // TODO bug with mask and same key?
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_q, .action = commands.windowClose, .arg = undefined},
-    KeyDef{ .modifier = c.Mod4Mask | c.ShiftMask, .keysym = c.XK_e, .action = commands.exit, .arg = undefined},
+    KeyDef{ .modifier = c.Mod4Mask | c.ShiftMask, .keysym = c.XK_q, .action = commands.exit, .arg = undefined},
 
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_1, .action = commands.workspaceShow, .arg = Arg{.UInt=0}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_2, .action = commands.workspaceShow, .arg = Arg{.UInt=1}},
@@ -55,4 +55,6 @@ pub var keys = [_]KeyDef{
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_p, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"rofi", "-show", "run"}}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_Return, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"alacritty"}}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_b, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"chromium"}}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_m, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"notify-send", "-t", "200", "test message"}}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_n, .action = commands.notify, .arg = Arg{.String="Test Message"}},
 };

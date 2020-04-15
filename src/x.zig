@@ -22,8 +22,11 @@ pub const Xlib = struct {
         }
 
 
+        var cursorNormal = c.XCreateFontCursor(self.display, 2);
         var windowAttributes: c.XSetWindowAttributes = undefined;
         windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask | c.EnterWindowMask | c.FocusChangeMask | c.PropertyChangeMask;
+        windowAttributes.cursor = cursorNormal;
+        _ = c.XChangeWindowAttributes(self.display, self.root, c.CWEventMask | c.CWCursor, &windowAttributes);
         _ = c.XSelectInput(self.display, self.root, windowAttributes.event_mask);
         _ = c.XSync(self.display, 0);
     }
@@ -122,6 +125,16 @@ pub const Xlib = struct {
         std.debug.warn("hey {} {}\n", width, height);
         return height;
     }
+
+    fn resize(self: Self, window: c.Window, x: i32, y: i32, width: u32, height: u32) void {
+        var changes: c.XWindowChanges = undefined;
+        changes.x = x;
+        changes.y = y;
+        changes.width = @intCast(c_int, width);
+        changes.height = @intCast(c_int, height);
+        _ = c.XConfigureWindow(self.display, window, c.CWX | c.CWY | c.CWWidth | c.CWHeight, &changes);
+    }
+
 };
 
 //_ = c.XSetErrorHandler(errorHandler);

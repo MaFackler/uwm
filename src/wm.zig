@@ -1,14 +1,16 @@
 const std = @import("std");
 
+pub const maxWindows = 8; 
+
 pub const WindowManager = struct {
     activeScreenIndex: u32 = 0,
+    amountScreens: usize = 0,
     displayWidth: i32 = 0,
     displayHeight: i32 = 0,
-    screens: [8]Screen = undefined,
+    screens: [maxWindows]Screen = undefined,
     running: bool = false,
 
-    const Self = *WindowManager;
-    fn getActiveScreen(self: Self) *Screen {
+    fn getActiveScreen(self: *WindowManager) *Screen {
         var res = &self.screens[self.activeScreenIndex];
         return res;
     }
@@ -19,8 +21,7 @@ pub const Screen = struct {
     workspaces: [8]Workspace,
     activeWorkspace: u32,
 
-    const Self = *Screen;
-    fn getActiveWorkspace(self: Self) *Workspace {
+    fn getActiveWorkspace(self: *Screen) *Workspace {
         return &self.workspaces[self.activeWorkspace];
     }
 };
@@ -60,6 +61,10 @@ pub const Workspace = struct {
         }
         return res;
     }
+    
+    fn getFocusedWindow(self: Self) u64 {
+        return self.windows[self.focusedWindow];
+    }
 
     fn removeWindow(self: Self, window: u64) void {
         var removeIndex: usize = 0;
@@ -88,11 +93,14 @@ pub const Workspace = struct {
         }
     }
 
-    fn addWindow(self: Self, window: u64) void {
-        // TODO: overflow of windows array
+    fn addWindow(self: Self, window: u64) bool {
+        if (self.amountOfWindows == maxWindows) {
+            return false;
+        }
         self.windows[self.amountOfWindows] = window;
         self.focusedWindow = self.amountOfWindows;
         self.amountOfWindows += 1;
+        return true;
     }
 
 };

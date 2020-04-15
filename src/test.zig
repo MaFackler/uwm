@@ -7,18 +7,18 @@ test "add and remove windows" {
     assert(workspace.amountOfWindows == 0);
     assert(workspace.focusedWindow == 0);
 
-    workspace.addWindow(1337);
+    assert(true == workspace.addWindow(1337));
     assert(workspace.amountOfWindows == 1);
     assert(workspace.windows[0] == 1337);
     assert(workspace.focusedWindow == 0);
 
-    workspace.addWindow(1338);
+    assert(true == workspace.addWindow(1338));
     assert(workspace.amountOfWindows == 2);
     assert(workspace.windows[0] == 1337);
     assert(workspace.windows[1] == 1338);
     assert(workspace.focusedWindow == 1);
 
-    workspace.addWindow(1339);
+    assert(true == workspace.addWindow(1339));
     assert(workspace.amountOfWindows == 3);
     assert(workspace.windows[0] == 1337);
     assert(workspace.windows[1] == 1338);
@@ -42,3 +42,19 @@ test "add and remove windows" {
     assert(workspace.windows[0] == 1339);
     assert(workspace.focusedWindow == 0);
 }
+
+test "maximum windows" {
+    var workspace = wm.Workspace{};
+    var i: usize = 0;
+    while (i < 8) {
+        assert(true == workspace.addWindow(i));
+        i += 1;
+    }
+
+    assert(false == workspace.addWindow(1337));
+    assert(workspace.amountOfWindows == 8);
+}
+
+
+
+
