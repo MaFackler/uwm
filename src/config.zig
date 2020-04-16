@@ -38,6 +38,10 @@ pub const colors = [COLOR_AMOUNT][3]u8{
     [_]u8{ 0, 0, 0 },
 };
 
+fn rofi() void {
+
+}
+
 pub var keys = [_]KeyDef{
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_q, .action = commands.windowClose, .arg = undefined},
     KeyDef{ .modifier = c.Mod4Mask | c.ShiftMask, .keysym = c.XK_q, .action = commands.exit, .arg = undefined},
@@ -57,4 +61,7 @@ pub var keys = [_]KeyDef{
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_b, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"chromium"}}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_m, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"notify-send", "-t", "200", "test message"}}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_n, .action = commands.notify, .arg = Arg{.String="Test Message"}},
+    // TODO: my motior order is swapped
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_period, .action = commands.screenSelectByDelta, .arg = Arg{.Int=-1}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_comma, .action = commands.screenSelectByDelta, .arg = Arg{.Int=1}},
 };

@@ -28,6 +28,7 @@ fn getBar(index: usize) c.Window {
 
 pub fn onConfigureRequest(e: *c.XEvent) void {
     var event = e.xconfigurerequest;
+    warn("------------------\n");
     warn("Configure Request {}\n", event.window);
     var workspace = manager.getActiveScreen().getActiveWorkspace();
     if (!workspace.hasWindow(event.window)) {
@@ -44,7 +45,6 @@ pub fn onConfigureRequest(e: *c.XEvent) void {
 }
 
 pub fn onDestroyNotify(e: *c.XEvent) void {
-    commands.notify(config.Arg{.String="Destroy Notify"});
     var event = e.xdestroywindow;
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
@@ -53,19 +53,21 @@ pub fn onDestroyNotify(e: *c.XEvent) void {
 
 fn onEnterNotify(e: *c.XEvent) void {
     var event = e.xcrossing;
-    notify("Enter Notify", event.window);
+    warn("Enter Notify ---- {} ---- {}\n", event.window, manager.activeScreenIndex);
     var buffer: [256]u8 = undefined;
-    var err = std.fmt.bufPrint(&buffer, "{} {}", "Enter Notify", event.window);
-    commands.notify(config.Arg{.String=buffer});
+
+    notifyf("Got a window {}", event.window);
 
     if (event.window != xlib.root) {
         var screenIndex = manager.getScreenIndexOfWindow(event.window);
         manager.activeScreenIndex = @intCast(u32, screenIndex);
+        warn("EnterNotify ScreenSelect {}", manager.activeScreenIndex);
         var screen = manager.getActiveScreen();
         var workspace = screen.getActiveWorkspace();
         var index = workspace.getWindowIndex(event.window);
         if (index >= 0) {
             workspace.focusedWindow = @intCast(u32, index);
+            xlib.focusWindow(workspace.getFocusedWindow());
         }
         drawBar();
     }
@@ -82,7 +84,8 @@ fn onUnmapNotify(e: *c.XEvent) void {
 
 pub fn onMapRequest(e: *c.XEvent) void {
     var event = e.xmap;
-    warn("map request {}\n", event.window);
+    warn("Map Request ---- {} ---- {}\n", event.window, manager.activeScreenIndex);
+    notifyf("Map Request {}\n", manager.activeScreenIndex);
 
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
@@ -107,7 +110,6 @@ pub fn sendConfigureEvent(window: c.Window) void {
     event.border_width = 2;
     event.override_redirect = 0;
     var res = c.XSendEvent(display, window, 0, c.SubstructureNotifyMask, @ptrCast(*c.XEvent, &event));
-    warn("res is {}\n", res);
 }
 
 
@@ -151,9 +153,7 @@ pub fn drawBar() void {
             var prop: c.XTextProperty = undefined;
             xlib.getWindowName(window, &prop);
             var name: [256]u8 = undefined;
-            warn("prop is {}\n", prop);
             @memcpy(&name, prop.value, prop.nitems);
-            warn("window name is {s}\n", name);
             defer xlib.freeWindowName(&prop);
 
             bardraw.drawText(xlib.font, @intCast(i32, @divFloor(w, 2)) - 20, xlib.font.ascent + 1, name[0..prop.nitems]);
@@ -163,12 +163,10 @@ pub fn drawBar() void {
 }
 
 fn onExpose(e: *c.XEvent) void {
-    warn("on expose\n");
     drawBar();
 }
 
 fn onNoExpose(e: *c.XEvent) void {
-    //warn("on noexpose\n");
     //drawBar();
 }
 
@@ -179,6 +177,8 @@ fn onMotionNotify(e: *c.XEvent) void {
             and event.y_root > screen.info.y and event.y_root < screen.info.y + @intCast(i32, screen.info.height)) {
 
             if (manager.activeScreenIndex != screenIndex) {
+                notifyf("Motion ScreenSelect {}", manager.activeScreenIndex);
+                notifyf("Motion ScreenSelect {}", event.x_root);
                 manager.activeScreenIndex = screenIndex;
                 drawBar();
             }
@@ -192,15 +192,14 @@ fn notify(msg: []const u8, window: u64) void {
     commands.notify(config.Arg{.String=str});
 }
 
-fn notifyf(comptime msg: []const u8, args: ...) void {
+pub fn notifyf(comptime msg: []const u8, args: ...) void {
     var buffer: [256]u8 = undefined;
     var str = std.fmt.bufPrint(&buffer, msg, args) catch unreachable;
-    commands.notify(config.Arg{.String=str});
+    //commands.notify(config.Arg{.String=str});
 }
 
 fn onFocusIn(e: *c.XEvent) void {
     var event = e.xfocus;
-    notify("Focus In", event.window);
     //commands.notify(config.Arg{.String="Focus In"});
     //var event = e.xfocus;
     //var w = manager.getActiveScreen().getActiveWorkspace();
@@ -230,15 +229,15 @@ fn xineramaGetScreenInfo() void {
     {
         var i: u32 = 0;
         while (i < @intCast(u32, numScreens)) : (i += 1) {
-            warn("info {}\n", screenInfo[i]);
             manager.screens[i].info.x = @intCast(i32, screenInfo[i].x_org);
             manager.screens[i].info.y = @intCast(i32, screenInfo[i].y_org);
             manager.screens[i].info.width = @intCast(u32, screenInfo[i].width);
             manager.screens[i].info.height = @intCast(u32, screenInfo[i].height);
             manager.amountScreens = i + 1;
-            warn("Screen {}\n", screenInfo[i]);
         }
     }
+
+
 }
 
 pub fn main() void {
@@ -257,7 +256,6 @@ pub fn main() void {
 
     xineramaGetScreenInfo();
 
-    warn("Amount of screens {}\n", manager.amountScreens);
 
 
     for (manager.screens[0..manager.amountScreens]) |*screen, screenIndex| {
@@ -283,7 +281,6 @@ pub fn main() void {
     var cmd = "cd ~/.uwm; ./autostart.sh &";
     _ = c.system(&cmd);
     manager.running = true;
-    warn("root is {}\n", xlib.root);
 
 
     while (manager.running) {
@@ -309,12 +306,12 @@ pub fn main() void {
             c.ConfigureRequest => {
                 onConfigureRequest(&e);
             },
-            c.ConfigureNotify => warn("Configure notify\n"),
+            //c.ConfigureNotify => warn("Configure notify\n"),
             c.MapRequest => {
                 onMapRequest(&e);
             },
             c.MapNotify => {
-                warn("map notify\n");
+                //warn("map notify\n");
             },
             c.UnmapNotify => onUnmapNotify(&e),
             c.DestroyNotify => onDestroyNotify(&e),
@@ -322,7 +319,8 @@ pub fn main() void {
             c.FocusIn => onFocusIn(&e),
             c.NoExpose => onNoExpose(&e),
             c.MotionNotify => onMotionNotify(&e),
-            else => warn("not handled {}\n", e.type),
+            else => continue,
+            //else => warn("not handled {}\n", e.type),
         }
     }
 

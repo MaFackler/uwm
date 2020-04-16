@@ -26,7 +26,7 @@ pub fn notify(arg: config.Arg) void {
     var cmd = [_][]const u8{
         "notify-send",
         "-t",
-        "1000",
+        "2000",
         msg,
     };
     var argToPass = config.Arg{.StringList=&cmd};
@@ -52,5 +52,30 @@ pub fn workspaceShow(arg: config.Arg) void {
     main.layouts[main.manager.activeScreenIndex].stack(workspace, &main.xlib);
     main.drawBar();
     main.xlib.focusWindow(main.xlib.root);
+}
+
+pub fn screenSelectByDelta(arg: config.Arg) void {
+    var delta = arg.Int;
+    var amount: i32 = @intCast(i32, main.manager.amountScreens);
+    var index: i32 = @intCast(i32, main.manager.activeScreenIndex) + delta;
+    // TODO: use min and max
+    if (index < 0) {
+        index = 0;
+    } else if (index >= amount) {
+        index = amount - 1;
+    }
+    main.manager.activeScreenIndex = @intCast(u32, index);
+    var windowToFoucs = main.xlib.root;
+    var screen = main.manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
+    if (workspace.amountOfWindows > 0) {
+        windowToFoucs = workspace.getFocusedWindow();
+    }
+
+    main.notifyf("ScreenSelect {}", main.manager.activeScreenIndex);
+    main.xlib.setPointer(screen.info.x + @intCast(i32, @divFloor(screen.info.width, 2)),
+                         screen.info.y + @intCast(i32, @divFloor(screen.info.height, 2)));
+
+    main.drawBar();
 }
 

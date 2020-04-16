@@ -67,7 +67,6 @@ pub const Xlib = struct {
     fn getWindowName(self: Self, window: c.Window, textProperty: *c.XTextProperty) void {
         var name: []const u8 = "_NET_WM_NAME";
         var atom = c.XInternAtom(self.display, name.ptr, 0);
-        std.debug.warn("ATOM IS {}\n", atom);
         var res = c.XGetTextProperty(self.display, window, textProperty, atom);
         std.debug.assert(res != 0);
     }
@@ -122,7 +121,6 @@ pub const Xlib = struct {
                            &x, &y,
                            &width, &height,
                            &borderWidth, &depth);
-        std.debug.warn("hey {} {}\n", width, height);
         return height;
     }
 
@@ -135,9 +133,13 @@ pub const Xlib = struct {
         _ = c.XConfigureWindow(self.display, window, c.CWX | c.CWY | c.CWWidth | c.CWHeight, &changes);
     }
 
-    fn focus(self: Self, window: c.Window) void {
-        c.XSetInputFocus(self.display, window, c.RevertToPointerRoot, c.CurrentTime);
+    fn setPointer(self: Self, x: i32, y: i32) void {
+        var res = c.XWarpPointer(self.display, self.root, self.root, 0, 0, 0, 0, x, y);
+        std.debug.warn("res is {}", res);
+        _ = c.XFlush(self.display);
+        _ = c.XSync(self.display, 0);
     }
+
 
 };
 

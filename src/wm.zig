@@ -89,7 +89,6 @@ pub const Workspace = struct {
                 break;
             }
         }
-        std.debug.warn("index is {}\n", removeIndex);
 
         if (removeIndex == self.focusedWindow) {
             self.focusedWindow = 0;
