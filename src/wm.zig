@@ -3,7 +3,7 @@ const std = @import("std");
 pub const maxWindows = 8; 
 
 pub const WindowManager = struct {
-    activeScreenIndex: u32 = 0,
+    activeScreenIndex: usize = 0,
     amountScreens: usize = 0,
     displayWidth: i32 = 0,
     displayHeight: i32 = 0,
@@ -12,6 +12,19 @@ pub const WindowManager = struct {
 
     fn getActiveScreen(self: *WindowManager) *Screen {
         var res = &self.screens[self.activeScreenIndex];
+        return res;
+    }
+
+    fn getScreenIndexOfWindow(self: *WindowManager, window: u64) i32 {
+        var res: i32 = -1;
+        for (self.screens[0..self.amountScreens]) |*screen, screenIndex| {
+            var workspace = screen.getActiveWorkspace();
+            var windowIndex = workspace.getWindowIndex(window);
+            if (windowIndex >= 0) {
+                res = @intCast(i32, screenIndex);
+                break;
+            }
+        }
         return res;
     }
 };

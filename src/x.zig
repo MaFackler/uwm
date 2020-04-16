@@ -24,7 +24,7 @@ pub const Xlib = struct {
 
         var cursorNormal = c.XCreateFontCursor(self.display, 2);
         var windowAttributes: c.XSetWindowAttributes = undefined;
-        windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask | c.EnterWindowMask | c.FocusChangeMask | c.PropertyChangeMask;
+        windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask | c.EnterWindowMask | c.FocusChangeMask | c.PropertyChangeMask | c.PointerMotionMask;
         windowAttributes.cursor = cursorNormal;
         _ = c.XChangeWindowAttributes(self.display, self.root, c.CWEventMask | c.CWCursor, &windowAttributes);
         _ = c.XSelectInput(self.display, self.root, windowAttributes.event_mask);
@@ -133,6 +133,10 @@ pub const Xlib = struct {
         changes.width = @intCast(c_int, width);
         changes.height = @intCast(c_int, height);
         _ = c.XConfigureWindow(self.display, window, c.CWX | c.CWY | c.CWWidth | c.CWHeight, &changes);
+    }
+
+    fn focus(self: Self, window: c.Window) void {
+        c.XSetInputFocus(self.display, window, c.RevertToPointerRoot, c.CurrentTime);
     }
 
 };

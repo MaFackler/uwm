@@ -27,17 +27,17 @@ fn getBar(index: usize) c.Window {
 }
 
 pub fn onConfigureRequest(e: *c.XEvent) void {
-    var ev = e.xconfigurerequest;
-    warn("Configure Request {}\n", ev.window);
+    var event = e.xconfigurerequest;
+    warn("Configure Request {}\n", event.window);
     var workspace = manager.getActiveScreen().getActiveWorkspace();
-    if (!workspace.hasWindow(ev.window)) {
+    if (!workspace.hasWindow(event.window)) {
         warn("Window is not registered\n");
         var changes: c.XWindowChanges = undefined;
         changes.height = e.xconfigurerequest.height;
         changes.border_width = e.xconfigurerequest.border_width;
         changes.sibling = e.xconfigurerequest.above;
         changes.stack_mode = e.xconfigurerequest.detail;
-        _ = c.XConfigureWindow(xlib.display, ev.window, @intCast(c_uint, ev.value_mask), &changes);
+        _ = c.XConfigureWindow(xlib.display, event.window, @intCast(c_uint, event.value_mask), &changes);
     } else {
         warn("Window is already registered\n");
     }
@@ -45,46 +45,51 @@ pub fn onConfigureRequest(e: *c.XEvent) void {
 
 pub fn onDestroyNotify(e: *c.XEvent) void {
     commands.notify(config.Arg{.String="Destroy Notify"});
-    var ev = e.xdestroywindow;
+    var event = e.xdestroywindow;
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    workspace.removeWindow(ev.window);
+    workspace.removeWindow(event.window);
 }
 
 fn onEnterNotify(e: *c.XEvent) void {
-    var ev = e.xcrossing;
-    notify("Enter Notify", ev.window);
+    var event = e.xcrossing;
+    notify("Enter Notify", event.window);
     var buffer: [256]u8 = undefined;
-    var err = std.fmt.bufPrint(&buffer, "{} {}", "Enter Notify", ev.window);
+    var err = std.fmt.bufPrint(&buffer, "{} {}", "Enter Notify", event.window);
     commands.notify(config.Arg{.String=buffer});
-    var screen = manager.getActiveScreen();
-    var workspace = screen.getActiveWorkspace();
-    var index = workspace.getWindowIndex(ev.window);
-    if (index >= 0) {
-        workspace.focusedWindow = @intCast(u32, index);
+
+    if (event.window != xlib.root) {
+        var screenIndex = manager.getScreenIndexOfWindow(event.window);
+        manager.activeScreenIndex = @intCast(u32, screenIndex);
+        var screen = manager.getActiveScreen();
+        var workspace = screen.getActiveWorkspace();
+        var index = workspace.getWindowIndex(event.window);
+        if (index >= 0) {
+            workspace.focusedWindow = @intCast(u32, index);
+        }
+        drawBar();
     }
-    drawBar();
 }
 
 fn onUnmapNotify(e: *c.XEvent) void {
-    var ev = e.xunmap;
+    var event = e.xunmap;
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    workspace.removeWindow(ev.window);
+    workspace.removeWindow(event.window);
     layouts[manager.activeScreenIndex].stack(workspace, &xlib);
 }
 
 
 pub fn onMapRequest(e: *c.XEvent) void {
-    var ev = e.xmap;
-    warn("map request {}\n", ev.window);
+    var event = e.xmap;
+    warn("map request {}\n", event.window);
 
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    if (workspace.addWindow(ev.window)) {
+    if (workspace.addWindow(event.window)) {
         layouts[manager.activeScreenIndex].stack(workspace, &xlib);
-        _ = c.XSelectInput(xlib.display, ev.window, c.EnterWindowMask | c.FocusChangeMask);
-        _ = c.XMapWindow(xlib.display, ev.window);
+        _ = c.XSelectInput(xlib.display, event.window, c.EnterWindowMask | c.FocusChangeMask);
+        _ = c.XMapWindow(xlib.display, event.window);
         _ = c.XSync(xlib.display, 1);
         drawBar();
     }
@@ -167,22 +172,42 @@ fn onNoExpose(e: *c.XEvent) void {
     //drawBar();
 }
 
+fn onMotionNotify(e: *c.XEvent) void {
+    var event = e.xmotion;
+    for (manager.screens[0..manager.amountScreens]) |screen, screenIndex| {
+        if (event.x_root > screen.info.x and event.x_root < screen.info.x + @intCast(i32, screen.info.width)
+            and event.y_root > screen.info.y and event.y_root < screen.info.y + @intCast(i32, screen.info.height)) {
+
+            if (manager.activeScreenIndex != screenIndex) {
+                manager.activeScreenIndex = screenIndex;
+                drawBar();
+            }
+        }
+    }
+}
+
 fn notify(msg: []const u8, window: u64) void {
     var buffer: [256]u8 = undefined;
     var str = std.fmt.bufPrint(&buffer, "{} {}", msg, window) catch unreachable;
     commands.notify(config.Arg{.String=str});
 }
 
+fn notifyf(comptime msg: []const u8, args: ...) void {
+    var buffer: [256]u8 = undefined;
+    var str = std.fmt.bufPrint(&buffer, msg, args) catch unreachable;
+    commands.notify(config.Arg{.String=str});
+}
+
 fn onFocusIn(e: *c.XEvent) void {
-    var ev = e.xfocus;
-    notify("Focus In", ev.window);
+    var event = e.xfocus;
+    notify("Focus In", event.window);
     //commands.notify(config.Arg{.String="Focus In"});
-    //var ev = e.xfocus;
+    //var event = e.xfocus;
     //var w = manager.getActiveScreen().getActiveWorkspace();
-    //if (ev.window != w.getFocusedWindow()) {
+    //if (event.window != w.getFocusedWindow()) {
     //    for (manager.screens[0..manager.amountScreens]) |*screen, screenIndex| {
     //        var workspace = screen.getActiveWorkspace();
-    //        var index = workspace.getWindowIndex(ev.window);
+    //        var index = workspace.getWindowIndex(event.window);
     //        if (index >= 0) {
     //            workspace.focusedWindow = @intCast(u32, index);
     //            manager.activeScreenIndex = @intCast(u32, screenIndex);
@@ -211,6 +236,7 @@ fn xineramaGetScreenInfo() void {
             manager.screens[i].info.width = @intCast(u32, screenInfo[i].width);
             manager.screens[i].info.height = @intCast(u32, screenInfo[i].height);
             manager.amountScreens = i + 1;
+            warn("Screen {}\n", screenInfo[i]);
         }
     }
 }
@@ -247,6 +273,8 @@ pub fn main() void {
         for (config.colors) |color, i| {
             bardraw.addColor(i, color[0], color[1], color[2]);
         }
+        layouts[screenIndex].x = screen.info.x;
+        layouts[screenIndex].y = screen.info.y;
         layouts[screenIndex].width = screen.info.width;
         layouts[screenIndex].height= screen.info.height - barheight;
     }
@@ -265,13 +293,13 @@ pub fn main() void {
         switch (e.type) {
             c.Expose => onExpose(&e),
             c.KeyPress => {
-                var ev = e.xkey;
-                var keysym = c.XKeycodeToKeysym(xlib.display, @intCast(u8, ev.keycode), 0);
+                var event = e.xkey;
+                var keysym = c.XKeycodeToKeysym(xlib.display, @intCast(u8, event.keycode), 0);
                 var screen = manager.getActiveScreen();
                 var workspace = screen.getActiveWorkspace();
 
                 for (config.keys) |key| {
-                    if (ev.state == key.modifier and keysym == key.keysym) {
+                    if (event.state == key.modifier and keysym == key.keysym) {
                         key.action(key.arg);
                         break;
                     }
@@ -293,6 +321,7 @@ pub fn main() void {
             c.EnterNotify => onEnterNotify(&e),
             c.FocusIn => onFocusIn(&e),
             c.NoExpose => onNoExpose(&e),
+            c.MotionNotify => onMotionNotify(&e),
             else => warn("not handled {}\n", e.type),
         }
     }
