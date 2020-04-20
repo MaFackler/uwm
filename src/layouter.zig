@@ -1,5 +1,6 @@
 const wm = @import("wm.zig");
 const X = @import("x.zig");
+const config = @import("config.zig");
 
 pub const Layout = struct {
     x: i32,
@@ -10,19 +11,22 @@ pub const Layout = struct {
     const Self = *Layout;
     fn stack(self: Self, workspace: *wm.Workspace, xlib: *X.Xlib) void {
         if (workspace.amountOfWindows == 1) {
-            xlib.resize(workspace.windows[0], self.x, self.y, self.width - 1, self.height);
+            xlib.resize(workspace.windows[0], self.x, self.y, self.width, self.height);
         } else {
+
             for (workspace.windows[0..workspace.amountOfWindows]) |window, i| {
-                var x: i32 = self.x;
-                var y: i32 = self.y;
-                var w = @divFloor(self.width, 2) - 1;
-                var h = self.height;
+                var w = @divFloor(self.width - (3 * config.gapsize), 2);
+                var h = self.height - 2 * config.gapsize;
+                var x: i32 = self.x + @intCast(i32, config.gapsize);
+                var y: i32 = self.y + @intCast(i32, config.gapsize);
+
 
                 if (i > 0) {
-                    x = self.x + @divFloor(@intCast(i32, self.width), 2);
-                    var divisor: u32 = workspace.amountOfWindows - 1;
-                    h = @divTrunc(self.height, divisor);
-                    y = self.y + @intCast(i32, (h * (i - 1)));
+                    var amountOfHorizontalGaps = workspace.amountOfWindows - 2;
+                    var amountRightWindows = workspace.amountOfWindows - 1;
+                    x = x + @intCast(i32, w + config.gapsize);
+                    h = @divTrunc(h - (amountOfHorizontalGaps * config.gapsize), amountRightWindows);
+                    y = y + @intCast(i32, (i - 1) * (config.gapsize + h));
                 }
 
                 xlib.resize(window, x, y, w, h);
