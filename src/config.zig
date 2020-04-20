@@ -24,8 +24,9 @@ const KeyDef = struct {
     arg: Arg,
 };
 
-pub const COLOR = enum(u2) {
-    FOREGROUND_FOCUS,
+pub const COLOR = enum(u8) {
+    FOREGROUND_FOCUS_BG,
+    FOREGROUND_FOCUS_FG,
     FOREGROUND_NOFOCUS,
     BACKGROUND,
     AMOUNT,
@@ -33,18 +34,16 @@ pub const COLOR = enum(u2) {
 pub const COLOR_AMOUNT = @enumToInt(COLOR.AMOUNT);
 
 pub const colors = [COLOR_AMOUNT][3]u8{
-    [_]u8{ 255, 0, 0 },
-    [_]u8{ 11, 11, 11 },
+    [_]u8{ 66, 50, 44 },
+    [_]u8{ 245, 108, 66 },
+    [_]u8{ 22, 22, 22 },
     [_]u8{ 0, 0, 0 },
 };
 
-fn rofi() void {
-
-}
 
 pub var keys = [_]KeyDef{
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_q, .action = commands.windowClose, .arg = undefined},
-    KeyDef{ .modifier = c.Mod4Mask | c.ShiftMask, .keysym = c.XK_q, .action = commands.exit, .arg = undefined},
+    KeyDef{ .modifier = c.Mod4Mask | c.ShiftMask, .keysym = c.XK_e, .action = commands.exit, .arg = undefined},
 
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_1, .action = commands.workspaceShow, .arg = Arg{.UInt=0}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_2, .action = commands.workspaceShow, .arg = Arg{.UInt=1}},

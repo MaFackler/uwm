@@ -19,8 +19,6 @@ var bars: [wm.maxWindows]c.Window = undefined;
 var barDraws: [wm.maxWindows]xdraw.Draw = undefined;
 pub var layouts: [wm.maxWindows]layouter.Layout = undefined;
 
-//var windows = std.AutoHashMap(u64, Workspace).init(std.heap.direct_allocator);
-
 
 fn getBar(index: usize) c.Window {
     return bars[index];
@@ -127,22 +125,32 @@ pub fn drawBar() void {
 
         var backgroundColor = config.COLOR.BACKGROUND;
         if (screenIndex == manager.activeScreenIndex) {
-            backgroundColor = config.COLOR.FOREGROUND_FOCUS;
+            //backgroundColor = config.COLOR.FOREGROUND_FOCUS;
         }
         bardraw.setColor(@enumToInt(backgroundColor));
 
         bardraw.fillRect(0, 0, w, barheight);
         // TODO: get height of font
-        var buttonSize: u32 = 16;
+        var buttonSize: u32 = barheight - 2;
         for (screen.workspaces) |workspace, i| {
-            var color = config.COLOR.FOREGROUND_NOFOCUS;
-            if (i == screen.activeWorkspace) {
-                color = config.COLOR.FOREGROUND_FOCUS;
-            }
-            bardraw.setColor(@enumToInt(color));
 
+            var focus = i == screen.activeWorkspace;
             var mul = @intCast(u32, i);
+            var color = config.COLOR.FOREGROUND_NOFOCUS;
+
+            if (focus) {
+                color = config.COLOR.FOREGROUND_FOCUS_BG;
+            }
+
+            bardraw.setColor(@enumToInt(color));
             bardraw.fillRect(@intCast(i32, buttonSize * mul) + 1, 1, buttonSize - 2, buttonSize - 2);
+
+            if (focus) {
+                color = config.COLOR.FOREGROUND_FOCUS_FG;
+                bardraw.setColor(@enumToInt(color));
+                bardraw.fillRect(@intCast(i32, buttonSize * mul) + 1, @intCast(i32, barheight) - 4, buttonSize - 2, buttonSize - 2);
+            }
+
             bardraw.render();
         }
         var workspace = screen.getActiveWorkspace();
@@ -259,13 +267,13 @@ pub fn main() void {
 
 
     for (manager.screens[0..manager.amountScreens]) |*screen, screenIndex| {
-        var barheight: u32 = 16;
+        var barheight: u32 = 32;
         var barwidth: u32 = screen.info.width;
         var bardraw = &barDraws[screenIndex];
 
         var x = screen.info.x;
         var y = @intCast(i32, screen.info.height - barheight - 1);
-        bars[screenIndex] = xlib.createWindow(x, y, barwidth, barheight);
+        bars[screenIndex] = xlib.createWindow(x, y + 1, barwidth, barheight);
         bardraw.init(xlib.display, bars[screenIndex], xlib.screen, barwidth, barheight);
 
         for (config.colors) |color, i| {
