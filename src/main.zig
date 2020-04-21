@@ -93,6 +93,7 @@ pub fn onMapRequest(e: *c.XEvent) void {
         _ = c.XMapWindow(xlib.display, event.window);
         _ = c.XSync(xlib.display, 1);
         drawBar();
+        xlib.focusWindow(event.window);
     }
 }
 
