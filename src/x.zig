@@ -64,11 +64,11 @@ pub const Xlib = struct {
     }
     
     // TODO: API is crap -> string handling?
-    fn getWindowName(self: Self, window: c.Window, textProperty: *c.XTextProperty) void {
+    fn getWindowName(self: Self, window: c.Window, textProperty: *c.XTextProperty) bool {
         var name: []const u8 = "_NET_WM_NAME";
         var atom = c.XInternAtom(self.display, name.ptr, 0);
         var res = c.XGetTextProperty(self.display, window, textProperty, atom);
-        std.debug.assert(res != 0);
+        return res != 0;
     }
 
     fn freeWindowName(self: Self, textProperty: *c.XTextProperty) void {

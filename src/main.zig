@@ -160,12 +160,13 @@ pub fn drawBar() void {
             // TODO: usize
             var window = workspace.windows[@intCast(u32, workspace.focusedWindow)];
             var prop: c.XTextProperty = undefined;
-            xlib.getWindowName(window, &prop);
-            var name: [256]u8 = undefined;
-            @memcpy(&name, prop.value, prop.nitems);
-            defer xlib.freeWindowName(&prop);
+            if (xlib.getWindowName(window, &prop)) {
+                var name: [256]u8 = undefined;
+                @memcpy(&name, prop.value, prop.nitems);
+                defer xlib.freeWindowName(&prop);
+                bardraw.drawText(xlib.font, @intCast(i32, @divFloor(w, 2)) - 20, xlib.font.ascent + 1, name[0..prop.nitems]);
+            }
 
-            //bardraw.drawText(xlib.font, @intCast(i32, @divFloor(w, 2)) - 20, xlib.font.ascent + 1, name[0..prop.nitems]);
         }
     }
 
