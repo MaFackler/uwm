@@ -150,14 +150,22 @@ pub fn drawBar() void {
         var bardraw = &barDraws[screenIndex];
         var w = xlib.getWindowWidth(bar);
         var barheight = xlib.getWindowHeight(bar);
+        var barwidth = xlib.getWindowWidth(bar);
 
         var backgroundColor = config.COLOR.BACKGROUND;
-        if (screenIndex == manager.activeScreenIndex) {
-            //backgroundColor = config.COLOR.FOREGROUND_FOCUS;
-        }
         bardraw.setForeground(colours.getColor(@enumToInt(backgroundColor)));
 
         bardraw.fillRect(0, 0, w, barheight);
+
+        if (screenIndex == manager.activeScreenIndex) {
+            bardraw.setForeground(getColor(config.COLOR.FOREGROUND_FOCUS_FG));
+            var focusbarWidth: u32 = 200;
+            var focusbarHeight: u32 = 4;
+            bardraw.fillRect(@intCast(i32, @divFloor(barwidth, 2)) - @intCast(i32, @divFloor(focusbarWidth, 2)), @intCast(i32, barheight - focusbarHeight), focusbarWidth, focusbarHeight);
+        }
+
+
+
         // TODO: get height of font
         var buttonSize: u32 = barheight - 2;
         for (screen.workspaces) |workspace, i| {
@@ -169,14 +177,18 @@ pub fn drawBar() void {
             if (focus) {
                 color = config.COLOR.FOREGROUND_FOCUS_BG;
             }
+            
+            var x = @intCast(i32, buttonSize * mul) + 1;
 
             bardraw.setForeground(colours.getColor(@enumToInt(color)));
-            bardraw.fillRect(@intCast(i32, buttonSize * mul) + 1, 1, buttonSize - 2, buttonSize - 2);
+            bardraw.fillRect(x, 1, buttonSize - 2, buttonSize - 2);
 
             if (focus) {
                 color = config.COLOR.FOREGROUND_FOCUS_FG;
                 bardraw.setForeground(colours.getColor(@enumToInt(color)));
-                bardraw.fillRect(@intCast(i32, buttonSize * mul) + 1, @intCast(i32, barheight) - 4, buttonSize - 2, buttonSize - 2);
+                bardraw.fillRect(x, @intCast(i32, barheight) - 4, buttonSize - 2, buttonSize - 2);
+
+
             }
 
             bardraw.render();
