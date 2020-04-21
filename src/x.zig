@@ -48,6 +48,11 @@ pub const Xlib = struct {
         _ = c.XGrabKey(self.display, code, mask, self.root, 1, c.GrabModeAsync, c.GrabModeAsync);
     }
 
+    fn grabButton(self: Self, window: c.Window) void {
+        _ = c.XGrabButton(self.display, c.AnyButton, c.AnyModifier, window, 0,
+                    c.ButtonPressMask, c.GrabModeSync, c.GrabModeSync, 0, 0);
+    }
+
     fn closeWindow(self: Self, window: c.Window) void {
         _ = c.XKillClient(self.display, window);
     }

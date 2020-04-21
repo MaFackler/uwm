@@ -74,7 +74,7 @@ fn onEnterNotify(e: *c.XEvent) void {
 
     notifyf("Got a window {}", event.window);
 
-    if (event.window != xlib.root) {
+    if (event.window != xlib.root and !config.focusOnClick) {
         var screenIndex = manager.getScreenIndexOfWindow(event.window);
         manager.activeScreenIndex = @intCast(u32, screenIndex);
         warn("EnterNotify ScreenSelect {}", manager.activeScreenIndex);
@@ -97,6 +97,7 @@ fn onUnmapNotify(e: *c.XEvent) void {
     if (workspace.amountOfWindows > 0) {
         windowFocus(workspace.getFocusedWindow());
     }
+    // TODO: ungabButtons???
 }
 
 
@@ -118,6 +119,8 @@ pub fn onMapRequest(e: *c.XEvent) void {
         _ = c.XSync(xlib.display, 1);
         drawBar();
         windowFocus(event.window);
+        
+        xlib.grabButton(event.window);
     }
 }
 
@@ -218,6 +221,13 @@ fn onMotionNotify(e: *c.XEvent) void {
             }
         }
     }
+}
+
+fn onButtonPress(e: *c.XEvent) void {
+    var event = e.xbutton;
+    _ = c.XAllowEvents(xlib.display, c.ReplayPointer, c.CurrentTime);
+    windowFocus(event.window);
+
 }
 
 fn notify(msg: []const u8, window: u64) void {
@@ -354,8 +364,9 @@ pub fn main() void {
             c.FocusIn => onFocusIn(&e),
             c.NoExpose => onNoExpose(&e),
             c.MotionNotify => onMotionNotify(&e),
-            else => continue,
-            //else => warn("not handled {}\n", e.type),
+            c.ButtonPress => onButtonPress(&e),
+            //else => continue,
+            else => warn("not handled {}\n", e.type),
         }
     }
 
