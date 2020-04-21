@@ -51,7 +51,11 @@ pub fn workspaceShow(arg: config.Arg) void {
     workspace = screen.getActiveWorkspace();
     main.layouts[main.manager.activeScreenIndex].stack(workspace, &main.xlib);
     main.drawBar();
-    main.xlib.focusWindow(main.xlib.root);
+    if (workspace.amountOfWindows > 0) {
+        main.windowFocus(workspace.getFocusedWindow());
+    } else {
+        main.xlib.focusWindow(main.xlib.root);
+    }
 }
 
 pub fn screenSelectByDelta(arg: config.Arg) void {

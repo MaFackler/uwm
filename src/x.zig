@@ -133,6 +133,14 @@ pub const Xlib = struct {
         _ = c.XConfigureWindow(self.display, window, c.CWX | c.CWY | c.CWWidth | c.CWHeight, &changes);
     }
 
+    fn windowSetBorder(self: Self, window: c.Window, color: u64, borderWidth: i32) void {
+        _ = c.XSetWindowBorder(self.display, window, color);
+        var changes: c.XWindowChanges = undefined;
+        changes.border_width = borderWidth;
+        _ = c.XConfigureWindow(self.display, window, c.CWBorderWidth, &changes);
+    }
+
+
     fn setPointer(self: Self, x: i32, y: i32) void {
         var res = c.XWarpPointer(self.display, self.root, self.root, 0, 0, 0, 0, x, y);
         std.debug.warn("res is {}", res);

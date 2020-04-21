@@ -89,12 +89,6 @@ pub const Workspace = struct {
                 break;
             }
         }
-
-        if (removeIndex == self.focusedWindow) {
-            self.focusedWindow = 0;
-        } else if (removeIndex < self.focusedWindow) {
-            self.focusedWindow -= 1;
-        }
         
         if (found) {
             for (self.windows[removeIndex..self.amountOfWindows]) |win, i| {
@@ -110,7 +104,6 @@ pub const Workspace = struct {
             return false;
         }
         self.windows[self.amountOfWindows] = window;
-        self.focusedWindow = self.amountOfWindows;
         self.amountOfWindows += 1;
         return true;
     }

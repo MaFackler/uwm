@@ -3,6 +3,7 @@ const c = @import("c.zig");
 const X = @import("x.zig");
 const std = @import("std");
 const wm = @import("wm.zig");
+const colors = @import("colors.zig");
 const commands = @import("commands.zig");
 const xdraw = @import("xdraw.zig");
 const layouter = @import("layouter.zig");
@@ -17,6 +18,7 @@ pub var manager: wm.WindowManager = wm.WindowManager{};
 
 var bars: [wm.maxWindows]c.Window = undefined;
 var barDraws: [wm.maxWindows]xdraw.Draw = undefined;
+var colours: colors.Colors = undefined;
 pub var layouts: [wm.maxWindows]layouter.Layout = undefined;
 
 
@@ -49,6 +51,22 @@ pub fn onDestroyNotify(e: *c.XEvent) void {
     workspace.removeWindow(event.window);
 }
 
+pub fn windowFocus(window: u64) void {
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
+    var index = workspace.getWindowIndex(window);
+    warn("index is {}\n", index);
+    if (index >= 0) {
+        var oldFocus = workspace.getFocusedWindow();
+        workspace.focusedWindow = @intCast(u32, index);
+        var newFocus = workspace.getFocusedWindow();
+        xlib.focusWindow(newFocus);
+
+        xlib.windowSetBorder(oldFocus, getColor(config.COLOR.FOREGROUND_NOFOCUS), config.borderWidth);
+        xlib.windowSetBorder(newFocus, getColor(config.COLOR.FOREGROUND_FOCUS_FG), config.borderWidth);
+    }
+}
+
 fn onEnterNotify(e: *c.XEvent) void {
     var event = e.xcrossing;
     warn("Enter Notify ---- {} ---- {}\n", event.window, manager.activeScreenIndex);
@@ -60,13 +78,7 @@ fn onEnterNotify(e: *c.XEvent) void {
         var screenIndex = manager.getScreenIndexOfWindow(event.window);
         manager.activeScreenIndex = @intCast(u32, screenIndex);
         warn("EnterNotify ScreenSelect {}", manager.activeScreenIndex);
-        var screen = manager.getActiveScreen();
-        var workspace = screen.getActiveWorkspace();
-        var index = workspace.getWindowIndex(event.window);
-        if (index >= 0) {
-            workspace.focusedWindow = @intCast(u32, index);
-            xlib.focusWindow(workspace.getFocusedWindow());
-        }
+        windowFocus(event.window);
         drawBar();
     }
 }
@@ -75,10 +87,22 @@ fn onUnmapNotify(e: *c.XEvent) void {
     var event = e.xunmap;
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
+    var newFocusIndex = workspace.getWindowIndex(event.window) - 1;
+    if (newFocusIndex < 0) {
+        newFocusIndex = 0;
+    }
     workspace.removeWindow(event.window);
     layouts[manager.activeScreenIndex].stack(workspace, &xlib);
+    workspace.focusedWindow = @intCast(u32, newFocusIndex);
+    if (workspace.amountOfWindows > 0) {
+        windowFocus(workspace.getFocusedWindow());
+    }
 }
 
+
+fn getColor(color: config.COLOR) u64 {
+    return colours.getColor(@enumToInt(color));
+}
 
 pub fn onMapRequest(e: *c.XEvent) void {
     var event = e.xmap;
@@ -93,7 +117,7 @@ pub fn onMapRequest(e: *c.XEvent) void {
         _ = c.XMapWindow(xlib.display, event.window);
         _ = c.XSync(xlib.display, 1);
         drawBar();
-        xlib.focusWindow(event.window);
+        windowFocus(event.window);
     }
 }
 
@@ -128,7 +152,7 @@ pub fn drawBar() void {
         if (screenIndex == manager.activeScreenIndex) {
             //backgroundColor = config.COLOR.FOREGROUND_FOCUS;
         }
-        bardraw.setColor(@enumToInt(backgroundColor));
+        bardraw.setForeground(colours.getColor(@enumToInt(backgroundColor)));
 
         bardraw.fillRect(0, 0, w, barheight);
         // TODO: get height of font
@@ -143,12 +167,12 @@ pub fn drawBar() void {
                 color = config.COLOR.FOREGROUND_FOCUS_BG;
             }
 
-            bardraw.setColor(@enumToInt(color));
+            bardraw.setForeground(colours.getColor(@enumToInt(color)));
             bardraw.fillRect(@intCast(i32, buttonSize * mul) + 1, 1, buttonSize - 2, buttonSize - 2);
 
             if (focus) {
                 color = config.COLOR.FOREGROUND_FOCUS_FG;
-                bardraw.setColor(@enumToInt(color));
+                bardraw.setForeground(colours.getColor(@enumToInt(color)));
                 bardraw.fillRect(@intCast(i32, buttonSize * mul) + 1, @intCast(i32, barheight) - 4, buttonSize - 2, buttonSize - 2);
             }
 
@@ -267,6 +291,10 @@ pub fn main() void {
     xineramaGetScreenInfo();
 
 
+    colours.init(xlib.display, xlib.screen);
+    for (config.colors) |color, i| {
+        colours.addColor(xlib.display, i, color[0], color[1], color[2]);
+    }
 
     for (manager.screens[0..manager.amountScreens]) |*screen, screenIndex| {
         var barheight: u32 = 32;
@@ -278,9 +306,6 @@ pub fn main() void {
         bars[screenIndex] = xlib.createWindow(x, y + 1, barwidth, barheight);
         bardraw.init(xlib.display, bars[screenIndex], xlib.screen, barwidth, barheight);
 
-        for (config.colors) |color, i| {
-            bardraw.addColor(i, color[0], color[1], color[2]);
-        }
         layouts[screenIndex].x = screen.info.x;
         layouts[screenIndex].y = screen.info.y;
         layouts[screenIndex].width = screen.info.width;

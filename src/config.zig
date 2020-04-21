@@ -41,6 +41,7 @@ pub const colors = [COLOR_AMOUNT][3]u8{
 };
 
 pub var gapsize: u32 = 8;
+pub var borderWidth: i32 = 2;
 
 pub var keys = [_]KeyDef{
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_q, .action = commands.windowClose, .arg = undefined},

@@ -11,7 +11,11 @@ pub const Layout = struct {
     const Self = *Layout;
     fn stack(self: Self, workspace: *wm.Workspace, xlib: *X.Xlib) void {
         if (workspace.amountOfWindows == 1) {
-            xlib.resize(workspace.windows[0], self.x, self.y, self.width, self.height);
+            xlib.resize(workspace.windows[0],
+                        self.x + @intCast(i32, config.gapsize),
+                        self.y + @intCast(i32, config.gapsize),
+                        self.width - 2 * config.gapsize,
+                        self.height - 2 * config.gapsize);
         } else {
 
             for (workspace.windows[0..workspace.amountOfWindows]) |window, i| {
