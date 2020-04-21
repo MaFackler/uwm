@@ -62,7 +62,7 @@ pub fn windowFocus(window: u64) void {
         var newFocus = workspace.getFocusedWindow();
         xlib.focusWindow(newFocus);
 
-        xlib.windowSetBorder(oldFocus, getColor(config.COLOR.FOREGROUND_NOFOCUS), config.borderWidth);
+        xlib.windowSetBorder(oldFocus, getColor(config.COLOR.BLACK), config.borderWidth);
         xlib.windowSetBorder(newFocus, getColor(config.COLOR.FOREGROUND_FOCUS_FG), config.borderWidth);
     }
 }

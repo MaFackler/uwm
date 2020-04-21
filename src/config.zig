@@ -29,6 +29,8 @@ pub const COLOR = enum(u8) {
     FOREGROUND_FOCUS_FG,
     FOREGROUND_NOFOCUS,
     BACKGROUND,
+    BLACK,
+    WHITE,
     AMOUNT,
 };
 pub const COLOR_AMOUNT = @enumToInt(COLOR.AMOUNT);
@@ -38,6 +40,8 @@ pub const colors = [COLOR_AMOUNT][3]u8{
     [_]u8{ 245, 108, 66 },
     [_]u8{ 22, 22, 22 },
     [_]u8{ 0, 0, 0 },
+    [_]u8{ 0, 0, 0 },
+    [_]u8{ 255, 255, 255 },
 };
 
 pub var gapsize: u32 = 8;
