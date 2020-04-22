@@ -108,5 +108,18 @@ pub const Workspace = struct {
         return true;
     }
 
+    fn getNextWindow(self: Self) u64 {
+        var index = std.math.min(self.focusedWindow + 1, self.amountOfWindows - 1);
+        return self.windows[index];
+    }
+
+    fn getPreviousWindow(self: Self) u64 {
+        var index = self.focusedWindow;
+        if (index > 0) {
+            index -= 1;
+        }
+        return self.windows[index];
+    }
+
 };
 

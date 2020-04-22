@@ -40,6 +40,16 @@ pub fn exit(arg: config.Arg) void {
 pub fn doLayout(arg: config.Arg) void {
 }
 
+pub fn windowNext(arg: config.Arg) void {
+    var workspace = main.manager.getActiveScreen().getActiveWorkspace();
+    main.windowFocus(workspace.getNextWindow());
+}
+
+pub fn windowPrevious(arg: config.Arg) void {
+    var workspace = main.manager.getActiveScreen().getActiveWorkspace();
+    main.windowFocus(workspace.getPreviousWindow());
+}
+
 pub fn workspaceShow(arg: config.Arg) void {
     var index = arg.UInt;
     var screen = main.manager.getActiveScreen();

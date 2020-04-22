@@ -16,14 +16,14 @@ test "add and remove windows" {
     assert(workspace.amountOfWindows == 2);
     assert(workspace.windows[0] == 1337);
     assert(workspace.windows[1] == 1338);
-    assert(workspace.focusedWindow == 1);
+    assert(workspace.focusedWindow == 0);
 
     assert(true == workspace.addWindow(1339));
     assert(workspace.amountOfWindows == 3);
     assert(workspace.windows[0] == 1337);
     assert(workspace.windows[1] == 1338);
     assert(workspace.windows[2] == 1339);
-    assert(workspace.focusedWindow == 2);
+    assert(workspace.focusedWindow == 0);
 
     assert(workspace.getWindowIndex(133) == -1);
     assert(workspace.getWindowIndex(1337) == 0);
@@ -35,12 +35,22 @@ test "add and remove windows" {
     assert(workspace.amountOfWindows == 2);
     assert(workspace.windows[0] == 1337);
     assert(workspace.windows[1] == 1339);
-    assert(workspace.focusedWindow == 1);
+    assert(workspace.focusedWindow == 0);
 
     workspace.removeWindow(1337);
     assert(workspace.amountOfWindows == 1);
     assert(workspace.windows[0] == 1339);
     assert(workspace.focusedWindow == 0);
+}
+
+test "next and previousWindow" {
+    var workspace = wm.Workspace{};
+    _ = workspace.addWindow(1);
+    _ = workspace.addWindow(2);
+    _ = workspace.addWindow(3);
+
+    assert(1 == workspace.getPreviousWindow());
+    assert(2 == workspace.getNextWindow());
 }
 
 test "maximum windows" {
