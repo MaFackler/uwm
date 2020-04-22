@@ -248,6 +248,20 @@ fn onMotionNotify(e: *c.XEvent) void {
     }
 }
 
+fn onKeyPress(e: *c.XEvent) void {
+    var event = e.xkey;
+    var keysym = c.XKeycodeToKeysym(xlib.display, @intCast(u8, event.keycode), 0);
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
+
+    for (config.keys) |key| {
+        if (event.state == key.modifier and keysym == key.keysym) {
+            key.action(key.arg);
+            break;
+        }
+    }
+}
+
 fn onButtonPress(e: *c.XEvent) void {
     var event = e.xbutton;
     _ = c.XAllowEvents(xlib.display, c.ReplayPointer, c.CurrentTime);
@@ -269,21 +283,6 @@ pub fn notifyf(comptime msg: []const u8, args: ...) void {
 
 fn onFocusIn(e: *c.XEvent) void {
     var event = e.xfocus;
-    //commands.notify(config.Arg{.String="Focus In"});
-    //var event = e.xfocus;
-    //var w = manager.getActiveScreen().getActiveWorkspace();
-    //if (event.window != w.getFocusedWindow()) {
-    //    for (manager.screens[0..manager.amountScreens]) |*screen, screenIndex| {
-    //        var workspace = screen.getActiveWorkspace();
-    //        var index = workspace.getWindowIndex(event.window);
-    //        if (index >= 0) {
-    //            workspace.focusedWindow = @intCast(u32, index);
-    //            manager.activeScreenIndex = @intCast(u32, screenIndex);
-    //            break;
-    //        }
-    //    }
-    //}
-    //drawBar();
 }
 
 fn xineramaGetScreenInfo() void {
@@ -313,18 +312,11 @@ pub fn main() void {
     xlib.init(config.fontname);
     defer xlib.delete();
 
-    xlib.grabKey(c.Mod4Mask, c.XK_p);
-    xlib.grabKey(c.Mod4Mask, c.XK_k);
-    xlib.grabKey(c.Mod4Mask, c.XK_1);
-    xlib.grabKey(c.Mod4Mask, c.XK_2);
-
     for (config.keys) |key| {
         xlib.grabKey(key.modifier, key.keysym);
     }
 
-
     xineramaGetScreenInfo();
-
 
     colours.init(xlib.display, xlib.screen);
     for (config.colors) |color, i| {
@@ -359,30 +351,9 @@ pub fn main() void {
 
         switch (e.type) {
             c.Expose => onExpose(&e),
-            c.KeyPress => {
-                var event = e.xkey;
-                var keysym = c.XKeycodeToKeysym(xlib.display, @intCast(u8, event.keycode), 0);
-                var screen = manager.getActiveScreen();
-                var workspace = screen.getActiveWorkspace();
-
-                for (config.keys) |key| {
-                    if (event.state == key.modifier and keysym == key.keysym) {
-                        key.action(key.arg);
-                        break;
-                    }
-                }
-
-            },
-            c.ConfigureRequest => {
-                onConfigureRequest(&e);
-            },
-            //c.ConfigureNotify => warn("Configure notify\n"),
-            c.MapRequest => {
-                onMapRequest(&e);
-            },
-            c.MapNotify => {
-                //warn("map notify\n");
-            },
+            c.KeyPress => onKeyPress(&e),
+            c.ConfigureRequest => onConfigureRequest(&e),
+            c.MapRequest => onMapRequest(&e),
             c.UnmapNotify => onUnmapNotify(&e),
             c.DestroyNotify => onDestroyNotify(&e),
             c.EnterNotify => onEnterNotify(&e),
@@ -390,8 +361,8 @@ pub fn main() void {
             c.NoExpose => onNoExpose(&e),
             c.MotionNotify => onMotionNotify(&e),
             c.ButtonPress => onButtonPress(&e),
-            //else => continue,
-            else => warn("not handled {}\n", e.type),
+            else => continue,
+            //else => warn("not handled {}\n", e.type),
         }
     }
 
