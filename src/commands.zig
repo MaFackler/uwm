@@ -69,12 +69,13 @@ pub fn screenSelectByDelta(arg: config.Arg) void {
         index = amount - 1;
     }
     main.manager.activeScreenIndex = @intCast(u32, index);
-    var windowToFoucs = main.xlib.root;
+    var windowToFocus = main.xlib.root;
     var screen = main.manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
     if (workspace.amountOfWindows > 0) {
-        windowToFoucs = workspace.getFocusedWindow();
+        windowToFocus = workspace.getFocusedWindow();
     }
+    main.windowFocus(windowToFocus);
 
     main.notifyf("ScreenSelect {}", main.manager.activeScreenIndex);
     main.xlib.setPointer(screen.info.x + @intCast(i32, @divFloor(screen.info.width, 2)),
