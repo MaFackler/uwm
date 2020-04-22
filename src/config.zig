@@ -4,6 +4,8 @@ const commands = @import("commands.zig");
 
 const ActionFunc = fn(comptime arg: i32) void;
 
+pub const fontname = "Ubuntu-15";
+
 pub const Arg = union {
     Int: i32,
     UInt: u32,

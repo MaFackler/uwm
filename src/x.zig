@@ -9,13 +9,12 @@ pub const Xlib = struct {
     font: *c.XftFont = undefined,
 
     const Self = *Xlib;
-    fn init(self: Self) void {
+    fn init(self: Self, fontname: []const u8) void {
         self.display = c.XOpenDisplay(null) orelse {
             panic("unable to create window");
         };
         self.screen = c.XDefaultScreen(self.display);
         self.root = c.XRootWindow(self.display, self.screen);
-        var fontname: []const u8 = "Ubuntu";
         self.font = c.XftFontOpenName(self.display, self.screen, fontname.ptr);
         if (self.font == undefined) {
             panic("could not load font");

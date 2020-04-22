@@ -64,6 +64,7 @@ pub fn windowFocus(window: u64) void {
 
         xlib.windowSetBorder(oldFocus, getColor(config.COLOR.BLACK), config.borderWidth);
         xlib.windowSetBorder(newFocus, getColor(config.COLOR.FOREGROUND_FOCUS_FG), config.borderWidth);
+        drawBar();
     }
 }
 
@@ -102,7 +103,7 @@ fn onUnmapNotify(e: *c.XEvent) void {
 
 
 fn getColor(color: config.COLOR) u64 {
-    return colours.getColor(@enumToInt(color));
+    return colours.getColorPixel(@enumToInt(color));
 }
 
 pub fn onMapRequest(e: *c.XEvent) void {
@@ -117,9 +118,7 @@ pub fn onMapRequest(e: *c.XEvent) void {
         _ = c.XSelectInput(xlib.display, event.window, c.EnterWindowMask | c.FocusChangeMask);
         _ = c.XMapWindow(xlib.display, event.window);
         _ = c.XSync(xlib.display, 1);
-        drawBar();
         windowFocus(event.window);
-        
         xlib.grabButton(event.window);
     }
 }
@@ -139,6 +138,9 @@ pub fn sendConfigureEvent(window: c.Window) void {
 }
 
 
+pub fn half(value: u32) i32 {
+    return @intCast(i32, @divFloor(value, 2));
+}
 
 
 pub fn drawBar() void {
@@ -153,7 +155,7 @@ pub fn drawBar() void {
         var barwidth = xlib.getWindowWidth(bar);
 
         var backgroundColor = config.COLOR.BACKGROUND;
-        bardraw.setForeground(colours.getColor(@enumToInt(backgroundColor)));
+        bardraw.setForeground(getColor(backgroundColor));
 
         bardraw.fillRect(0, 0, w, barheight);
 
@@ -161,7 +163,7 @@ pub fn drawBar() void {
             bardraw.setForeground(getColor(config.COLOR.FOREGROUND_FOCUS_FG));
             var focusbarWidth: u32 = 200;
             var focusbarHeight: u32 = 4;
-            bardraw.fillRect(@intCast(i32, @divFloor(barwidth, 2)) - @intCast(i32, @divFloor(focusbarWidth, 2)), @intCast(i32, barheight - focusbarHeight), focusbarWidth, focusbarHeight);
+            bardraw.fillRect(half(barwidth) - half(focusbarWidth), @intCast(i32, barheight - focusbarHeight), focusbarWidth, focusbarHeight);
         }
 
 
@@ -180,31 +182,42 @@ pub fn drawBar() void {
             
             var x = @intCast(i32, buttonSize * mul) + 1;
 
-            bardraw.setForeground(colours.getColor(@enumToInt(color)));
+            bardraw.setForeground(getColor(color));
             bardraw.fillRect(x, 1, buttonSize - 2, buttonSize - 2);
 
             if (focus) {
                 color = config.COLOR.FOREGROUND_FOCUS_FG;
-                bardraw.setForeground(colours.getColor(@enumToInt(color)));
+                bardraw.setForeground(getColor(color));
                 bardraw.fillRect(x, @intCast(i32, barheight) - 4, buttonSize - 2, buttonSize - 2);
 
 
             }
 
-            bardraw.render();
         }
         var workspace = screen.getActiveWorkspace();
+        bardraw.render();
 
         if (workspace.amountOfWindows > 0) {
             // TODO: usize
-            var window = workspace.windows[@intCast(u32, workspace.focusedWindow)];
+            var window = workspace.getFocusedWindow();
             var prop: c.XTextProperty = undefined;
             if (xlib.getWindowName(window, &prop)) {
                 var name: [256]u8 = undefined;
                 @memcpy(&name, prop.value, prop.nitems);
                 defer xlib.freeWindowName(&prop);
-                bardraw.drawText(xlib.font, @intCast(i32, @divFloor(w, 2)) - 20, xlib.font.ascent + 1, name[0..prop.nitems]);
+
+                var width: u32 = 0;
+                var height: u32 = 0;
+                bardraw.getTextDimensions(xlib.font, name[0..prop.nitems], &width, &height);
+                var x = half(w) - half(width);
+                var y: i32 = 0;
+                // TODO: bardraw.render overwrites drawtext
+                bardraw.drawText(xlib.font, colours.getColor(@enumToInt(config.COLOR.FOREGROUND_FOCUS_FG)),
+                                 x, y, name[0..prop.nitems]);
+            } else {
+                std.debug.warn("not able to get window name\n");
             }
+
 
         }
     }
@@ -297,8 +310,8 @@ fn xineramaGetScreenInfo() void {
 }
 
 pub fn main() void {
-    xlib.init();
-    defer xlib.init();
+    xlib.init(config.fontname);
+    defer xlib.delete();
 
     xlib.grabKey(c.Mod4Mask, c.XK_p);
     xlib.grabKey(c.Mod4Mask, c.XK_k);

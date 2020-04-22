@@ -24,12 +24,11 @@ pub const Draw = struct {
         _ = c.XSetForeground(self.display, self.gc, color);
     }
 
-    pub fn drawText(self: Self, font: *c.XftFont, x: i32, y: i32, text: []const u8) void {
+    pub fn drawText(self: Self, font: *c.XftFont, color: *c.XColor, x: i32, y: i32, text: []const u8) void {
         var renderColor: c.XRenderColor = undefined;
-        // TODO: use defined colors
-        renderColor.red = 65535;
-        renderColor.green = 0;
-        renderColor.blue = 0;
+        renderColor.red = color.red;
+        renderColor.green = color.green;
+        renderColor.blue = color.blue;
         renderColor.alpha = 65535;
         var draw: *c.XftDraw = undefined;
         var visual = c.XDefaultVisual(self.display, 0);
@@ -42,9 +41,18 @@ pub const Draw = struct {
         draw = c.XftDrawCreate(self.display, self.window, visual, colormap).?;
         defer c.XftDrawDestroy(draw);
 
-        c.XftDrawString8(draw, &xftColor, font, x, y, text.ptr, @intCast(i32, text.len));
-        
+        var width: u32 = 0;
+        var height: u32 = 0;
+        self.getTextDimensions(font, text, &width, &height);
+        c.XftDrawString8(draw, &xftColor, font, x, y + @intCast(i32, height), text.ptr, @intCast(i32, text.len));
+    }
 
+    pub fn getTextDimensions(self: Self, font: *c.XftFont, text: []const u8, width: *u32, height: *u32) void {
+        // TODO: c style function return tuple or vec2
+        var glyphInfo: c.XGlyphInfo = undefined;
+        c.XftTextExtentsUtf8(self.display, font, text.ptr, @intCast(i32, text.len), &glyphInfo);
+        width.* = @intCast(u32, glyphInfo.xOff);
+        height.* = @intCast(u32, font.ascent + font.descent);
     }
 
     pub fn fillRect(self: Self, x: i32, y: i32, width: u32, height: u32) void {
