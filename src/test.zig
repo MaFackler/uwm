@@ -65,6 +65,15 @@ test "maximum windows" {
     assert(workspace.amountOfWindows == 8);
 }
 
+test "workspaceFocus" {
+    var screen = wm.Screen{.info=undefined, .workspaces=undefined};
+
+    assert(0 == screen.previousWorkspace);
+    screen.workspaceFocus(2);
+    assert(2 == screen.activeWorkspace);
+    assert(0 == screen.previousWorkspace);
+}
+
 
 
 

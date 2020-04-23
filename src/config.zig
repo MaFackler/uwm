@@ -68,6 +68,8 @@ pub var keys = [_]KeyDef{
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_7, .action = commands.workspaceShow, .arg = Arg{.UInt=6}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_8, .action = commands.workspaceShow, .arg = Arg{.UInt=7}},
 
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_Tab, .action = commands.workspaceFocusPrevious, .arg = Arg{.UInt=0}},
+
     // Screen selection
     // TODO: my motior order is swapped
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_period, .action = commands.screenSelectByDelta, .arg = Arg{.Int=-1}},

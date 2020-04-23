@@ -32,10 +32,16 @@ pub const WindowManager = struct {
 pub const Screen = struct {
     info: ScreenInfo,
     workspaces: [8]Workspace,
-    activeWorkspace: u32,
+    activeWorkspace: u32 = 0,
+    previousWorkspace: u32 = 0,
 
     fn getActiveWorkspace(self: *Screen) *Workspace {
         return &self.workspaces[self.activeWorkspace];
+    }
+
+    fn workspaceFocus(self: *Screen, index: u32) void {
+        self.previousWorkspace = self.activeWorkspace;
+        self.activeWorkspace = index;
     }
 };
 

@@ -57,7 +57,7 @@ pub fn workspaceShow(arg: config.Arg) void {
     for (workspace.windows[0..workspace.amountOfWindows]) |window| {
         main.xlib.hideWindow(window);
     }
-    screen.activeWorkspace = index;
+    screen.workspaceFocus(index);
     workspace = screen.getActiveWorkspace();
     main.layouts[main.manager.activeScreenIndex].stack(workspace, &main.xlib);
     main.drawBar();
@@ -66,6 +66,12 @@ pub fn workspaceShow(arg: config.Arg) void {
     } else {
         main.xlib.focusWindow(main.xlib.root);
     }
+}
+
+pub fn workspaceFocusPrevious(arg: config.Arg) void {
+    var screen = main.manager.getActiveScreen();
+    var a = config.Arg{.UInt=screen.previousWorkspace};
+    workspaceShow(a);
 }
 
 pub fn screenSelectByDelta(arg: config.Arg) void {
