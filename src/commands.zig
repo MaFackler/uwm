@@ -98,7 +98,6 @@ pub fn screenSelectByDelta(arg: config.Arg) void {
     }
     main.windowFocus(windowToFocus);
 
-    main.notifyf("ScreenSelect {}", main.manager.activeScreenIndex);
     main.xlib.setPointer(screen.info.x + @intCast(i32, @divFloor(screen.info.width, 2)),
                          screen.info.y + @intCast(i32, @divFloor(screen.info.height, 2)));
 

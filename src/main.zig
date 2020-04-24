@@ -25,6 +25,7 @@ var barDraws: [wm.maxWindows]xdraw.Draw = undefined;
 var colours: colors.Colors = undefined;
 pub var layouts: [wm.maxWindows]layouter.Layout = undefined;
 
+var logfile: std.fs.File = undefined;
 
 fn getBar(index: usize) c.Window {
     return bars[index];
@@ -55,6 +56,7 @@ pub fn windowFocus(window: u64) void {
     var workspace = screen.getActiveWorkspace();
     var index = workspace.getWindowIndex(window);
     if (index >= 0) {
+        debug("WINDOW FOCUS {}: {}\n", .{ @as(usize, manager.activeScreenIndex), @as(i32, index)});
         var oldFocus = workspace.getFocusedWindow();
         workspace.focusedWindow = @intCast(u32, index);
         var newFocus = workspace.getFocusedWindow();
@@ -68,18 +70,27 @@ pub fn windowFocus(window: u64) void {
 
 fn onEnterNotify(e: *c.XEvent) void {
     var event = e.xcrossing;
+    debug("on enter notify {}\n", .{@as(u64, event.window)});
     var buffer: [256]u8 = undefined;
 
     if (event.window != xlib.root and !config.focusOnClick) {
         var screenIndex = manager.getScreenIndexOfWindow(event.window);
         manager.activeScreenIndex = @intCast(u32, screenIndex);
+        debug("onEnterNotify window focus\n", .{});
         windowFocus(event.window);
         drawBar();
     }
 }
 
+fn debug(comptime msg: []const u8, args: var) void {
+    var buf: [256]u8 = undefined;
+    var str = std.fmt.bufPrint(&buf, msg, args) catch unreachable;
+    //var res = logfile.write(str) catch unreachable;
+}
+
 fn onUnmapNotify(e: *c.XEvent) void {
     var event = e.xunmap;
+    debug("onUnmapNotify {}\n", .{@as(u64, event.window)});
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
     var newFocusIndex = workspace.getWindowIndex(event.window) - 1;
@@ -90,9 +101,10 @@ fn onUnmapNotify(e: *c.XEvent) void {
     layouts[manager.activeScreenIndex].stack(workspace, &xlib);
     workspace.focusedWindow = @intCast(u32, newFocusIndex);
     if (workspace.amountOfWindows > 0) {
-        windowFocus(workspace.getFocusedWindow());
+        debug("onUnmapNotify window focus {} {}\n", .{@as(u64, event.window), @as(u64, workspace.getFocusedWindow())});
+        //windowFocus(workspace.getFocusedWindow());
     }
-    // TODO: ungabButtons???
+    //xlib.ungrabButton(event.window);
 }
 
 
@@ -102,7 +114,7 @@ fn getColor(color: config.COLOR) u64 {
 
 pub fn onMapRequest(e: *c.XEvent) void {
     var event = e.xmap;
-    notifyf("Map Request {}\n", manager.activeScreenIndex);
+    debug("onMapRequest {}\n", .{@as(u64, event.window)});
 
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
@@ -234,8 +246,7 @@ fn onMotionNotify(e: *c.XEvent) void {
             and event.y_root > screen.info.y and event.y_root < screen.info.y + @intCast(i32, screen.info.height)) {
 
             if (manager.activeScreenIndex != screenIndex) {
-                notifyf("Motion ScreenSelect {}", manager.activeScreenIndex);
-                notifyf("Motion ScreenSelect {}", event.x_root);
+                notifyf("Motion ScreenSelect {}", .{ @as(usize, manager.activeScreenIndex)});
                 manager.activeScreenIndex = screenIndex;
                 drawBar();
             }
@@ -270,8 +281,8 @@ fn notify(msg: []const u8, window: u64) void {
     commands.notify(config.Arg{.String=str});
 }
 
-pub fn notifyf(comptime msg: []const u8, args: ...) void {
-    var buffer: [256]u8 = undefined;
+pub fn notifyf(comptime msg: []const u8, args: var) void {
+    //var buffer: [256]u8 = undefined;
     //var str = std.fmt.bufPrint(&buffer, msg, args) catch unreachable;
     //commands.notify(config.Arg{.String=str});
 }
@@ -371,6 +382,9 @@ const Date = struct {
 };
 
 pub fn main() !void {
+
+    
+    logfile = std.fs.cwd().createFile("log.txt", .{}) catch unreachable;
 
     xlib.init(config.fontname);
     _ = c.XInitThreads();

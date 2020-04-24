@@ -52,6 +52,10 @@ pub const Xlib = struct {
                     c.ButtonPressMask, c.GrabModeSync, c.GrabModeSync, 0, 0);
     }
 
+    fn ungrabButton(self: Self, window: c.Window) void {
+        _ = c.XUngrabButton(self.display, c.AnyButton, c.AnyModifier, window);
+    }
+
     fn closeWindow(self: Self, window: c.Window) void {
         _ = c.XKillClient(self.display, window);
     }
