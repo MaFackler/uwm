@@ -73,18 +73,21 @@ fn onEnterNotify(e: *c.XEvent) void {
     debug("on enter notify {}\n", .{@as(u64, event.window)});
     var buffer: [256]u8 = undefined;
 
-    if (event.window != xlib.root and !config.focusOnClick) {
+    if (event.window != xlib.root) {
         var screenIndex = manager.getScreenIndexOfWindow(event.window);
         manager.activeScreenIndex = @intCast(u32, screenIndex);
         debug("onEnterNotify window focus\n", .{});
-        windowFocus(event.window);
+
+        if (!config.focusOnClick) {
+            windowFocus(event.window);
+        }
         drawBar();
     }
 }
 
 fn debug(comptime msg: []const u8, args: var) void {
-    var buf: [256]u8 = undefined;
-    var str = std.fmt.bufPrint(&buf, msg, args) catch unreachable;
+    //var buf: [256]u8 = undefined;
+    //var str = std.fmt.bufPrint(&buf, msg, args) catch unreachable;
     //var res = logfile.write(str) catch unreachable;
 }
 
@@ -120,7 +123,7 @@ pub fn onMapRequest(e: *c.XEvent) void {
     var workspace = screen.getActiveWorkspace();
     if (workspace.addWindow(event.window)) {
         layouts[manager.activeScreenIndex].stack(workspace, &xlib);
-        _ = c.XSelectInput(xlib.display, event.window, c.EnterWindowMask | c.FocusChangeMask);
+        _ = c.XSelectInput(xlib.display, event.window, c.EnterWindowMask | c.FocusChangeMask | c.PointerMotionMask);
         _ = c.XMapWindow(xlib.display, event.window);
         _ = c.XSync(xlib.display, 1);
         windowFocus(event.window);
@@ -241,12 +244,14 @@ fn onNoExpose(e: *c.XEvent) void {
 
 fn onMotionNotify(e: *c.XEvent) void {
     var event = e.xmotion;
+    // TODO: issue when to many motion events?? it laggs
+    debug("Motion Event {}\n", .{ @as(u64, event.window)});
     for (manager.screens[0..manager.amountScreens]) |screen, screenIndex| {
         if (event.x_root > screen.info.x and event.x_root < screen.info.x + @intCast(i32, screen.info.width)
             and event.y_root > screen.info.y and event.y_root < screen.info.y + @intCast(i32, screen.info.height)) {
 
             if (manager.activeScreenIndex != screenIndex) {
-                notifyf("Motion ScreenSelect {}", .{ @as(usize, manager.activeScreenIndex)});
+                debug("Motion ScreenSelect {}\n", .{ @as(usize, manager.activeScreenIndex)});
                 manager.activeScreenIndex = screenIndex;
                 drawBar();
             }
@@ -425,14 +430,14 @@ pub fn main() !void {
 
     var ctx = ThreadCtx{.display=xlib.display, .window=xlib.root};
 
-    //var statusbarThread = try std.Thread.spawn(&ctx, updateStatusbar);
+    var statusbarThread = try std.Thread.spawn(&ctx, updateStatusbar);
     while (manager.running) {
 
-        //var item = msgQueue.get();
-        //while (item != null) {
-        //    drawBar();
-        //    item = msgQueue.get();
-        //}
+        var item = msgQueue.get();
+        while (item != null) {
+            drawBar();
+            item = msgQueue.get();
+        }
 
         if (c.XPending(xlib.display) > 0) {
 
@@ -457,7 +462,7 @@ pub fn main() !void {
         }
 
         //// TODO: sleep correct way?
-        //std.time.sleep(1600000);
+        std.time.sleep(1600000);
     }
 
     for (barDraws) |*bardraw| {
