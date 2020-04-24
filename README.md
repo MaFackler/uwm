@@ -16,7 +16,7 @@ Please make sure to adjust the fontname and the launch application.
 
 To set background, start applications etc.
 
-~/.config/uwm/autostart.sh
+~/.config/.uwm/autostart.sh
 
 # Compile
 
