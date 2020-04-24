@@ -3,7 +3,7 @@
 X11 Tiling window manager written in zig.
 Its still in a early stage but its "usable" :)
 
-![Screenshot][screen.png]
+![Screenshot](screen.png)
 
 # Configuration
 
