@@ -2,15 +2,13 @@ const std = @import("std");
 const c = @import("c.zig");
 const commands = @import("commands.zig");
 
-const ActionFunc = fn(comptime arg: i32) void;
-
 pub const fontname = "Ubuntu-14";
 
 pub const Arg = union {
     Int: i32,
     UInt: u32,
     float: f32,
-    StringList: [][]const u8,
+    StringList: []const []const u8,
     String: []const u8,
 };
 
@@ -77,9 +75,9 @@ pub var keys = [_]KeyDef{
 
     // Applications
     // TODO: use environment variables for term, browser, launcher
-    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_p, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"rofi", "-show", "run"}}},
-    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_Return, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"alacritty"}}},
-    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_b, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"chromium"}}},
-    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_m, .action = commands.run, .arg = Arg{.StringList=[_][]const u8{"notify-send", "-t", "200", "test message"}}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_p, .action = commands.run, .arg = Arg{.StringList=&[_][]const u8{"rofi", "-show", "run"}}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_Return, .action = commands.run, .arg = Arg{.StringList=&[_][]const u8{"alacritty"}}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_b, .action = commands.run, .arg = Arg{.StringList=&[_][]const u8{"chromium"}}},
+    KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_m, .action = commands.run, .arg = Arg{.StringList=&[_][]const u8{"notify-send", "-t", "200", "test message"}}},
     KeyDef{ .modifier = c.Mod4Mask, .keysym = c.XK_n, .action = commands.notify, .arg = Arg{.String="Test Message"}},
 };

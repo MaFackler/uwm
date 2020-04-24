@@ -13,6 +13,10 @@ const panic = std.debug.panic;
 const Allocator = std.mem.Allocator;
 pub var xlib = X.Xlib{};
 
+var msgQueue = std.atomic.Queue(i32).init();
+
+var timestring: [16]u8 = undefined;
+
 // TODO: maybe dynamic arrays
 pub var manager: wm.WindowManager = wm.WindowManager{};
 
@@ -28,19 +32,14 @@ fn getBar(index: usize) c.Window {
 
 pub fn onConfigureRequest(e: *c.XEvent) void {
     var event = e.xconfigurerequest;
-    warn("------------------\n");
-    warn("Configure Request {}\n", event.window);
     var workspace = manager.getActiveScreen().getActiveWorkspace();
     if (!workspace.hasWindow(event.window)) {
-        warn("Window is not registered\n");
         var changes: c.XWindowChanges = undefined;
         changes.height = e.xconfigurerequest.height;
         changes.border_width = e.xconfigurerequest.border_width;
         changes.sibling = e.xconfigurerequest.above;
         changes.stack_mode = e.xconfigurerequest.detail;
         _ = c.XConfigureWindow(xlib.display, event.window, @intCast(c_uint, event.value_mask), &changes);
-    } else {
-        warn("Window is already registered\n");
     }
 }
 
@@ -55,7 +54,6 @@ pub fn windowFocus(window: u64) void {
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
     var index = workspace.getWindowIndex(window);
-    warn("index is {}\n", index);
     if (index >= 0) {
         var oldFocus = workspace.getFocusedWindow();
         workspace.focusedWindow = @intCast(u32, index);
@@ -70,15 +68,11 @@ pub fn windowFocus(window: u64) void {
 
 fn onEnterNotify(e: *c.XEvent) void {
     var event = e.xcrossing;
-    warn("Enter Notify ---- {} ---- {}\n", event.window, manager.activeScreenIndex);
     var buffer: [256]u8 = undefined;
-
-    notifyf("Got a window {}", event.window);
 
     if (event.window != xlib.root and !config.focusOnClick) {
         var screenIndex = manager.getScreenIndexOfWindow(event.window);
         manager.activeScreenIndex = @intCast(u32, screenIndex);
-        warn("EnterNotify ScreenSelect {}", manager.activeScreenIndex);
         windowFocus(event.window);
         drawBar();
     }
@@ -108,7 +102,6 @@ fn getColor(color: config.COLOR) u64 {
 
 pub fn onMapRequest(e: *c.XEvent) void {
     var event = e.xmap;
-    warn("Map Request ---- {} ---- {}\n", event.window, manager.activeScreenIndex);
     notifyf("Map Request {}\n", manager.activeScreenIndex);
 
     var screen = manager.getActiveScreen();
@@ -136,7 +129,6 @@ pub fn sendConfigureEvent(window: c.Window) void {
     event.override_redirect = 0;
     var res = c.XSendEvent(display, window, 0, c.SubstructureNotifyMask, @ptrCast(*c.XEvent, &event));
 }
-
 
 pub fn half(value: u32) i32 {
     return @intCast(i32, @divFloor(value, 2));
@@ -214,12 +206,15 @@ pub fn drawBar() void {
                 // TODO: bardraw.render overwrites drawtext
                 bardraw.drawText(xlib.font, colours.getColor(@enumToInt(config.COLOR.FOREGROUND_FOCUS_FG)),
                                  x, y, name[0..prop.nitems]);
-            } else {
-                std.debug.warn("not able to get window name\n");
             }
 
-
         }
+
+        var textWidth: u32 = 0;
+        var textHeith: u32 = 0;
+        bardraw.getTextDimensions(xlib.font, &timestring, &textWidth, &textHeith);
+        bardraw.drawText(xlib.font, colours.getColor(@enumToInt(config.COLOR.FOREGROUND_FOCUS_FG)),
+                         @intCast(i32, barwidth - textWidth - 10), 5, timestring[0..timestring.len]);
     }
 
 }
@@ -277,7 +272,7 @@ fn notify(msg: []const u8, window: u64) void {
 
 pub fn notifyf(comptime msg: []const u8, args: ...) void {
     var buffer: [256]u8 = undefined;
-    var str = std.fmt.bufPrint(&buffer, msg, args) catch unreachable;
+    //var str = std.fmt.bufPrint(&buffer, msg, args) catch unreachable;
     //commands.notify(config.Arg{.String=str});
 }
 
@@ -308,8 +303,77 @@ fn xineramaGetScreenInfo() void {
 
 }
 
-pub fn main() void {
+const ThreadCtx = struct {
+    display: *c.Display,
+    window: u64,
+};
+
+fn updateStatusbar(ctx: *ThreadCtx) u8 {
+    var counter: u32 = 0;
+    while (manager.running) {
+        //c.XLockDisplay(ctx.display);
+        var seconds = std.time.milliTimestamp() / 1000;
+        comptime const secondsPerDay = 24 * 60 * 60;
+        var days = seconds / secondsPerDay;
+        var years = days / 365;
+        var d = Date{};
+        d.localtime();
+        var str = std.fmt.bufPrint(&timestring, "{d:0<4}-{d:0<2}-{d:0<2} {d:0<2}:{d:0<2}",
+                                   .{d.year, d.month, d.day, d.hour, d.minute}) catch unreachable;
+
+        //var event: c.XClientMessageEvent = undefined;
+        //event.type = c.ClientMessage;
+        //event.serial = 0;
+        //event.send_event = 1;
+        //event.message_type = c.XInternAtom(ctx.display, &"_APP_EVT", 0);
+        //event.format = 32;
+        //event.window = ctx.window;
+        //event.data.l[0] = @intCast(i64, c.XInternAtom(ctx.display, &"DUDE", 0));
+        //event.data.l[1] = c.CurrentTime;
+        ////event.send_event = 1;
+
+        //_ = c.XSendEvent(ctx.display, ctx.window, 0, c.NoEventMask, @ptrCast(*c.XEvent, &event));
+        ////_ = c.XSync(ctx.display, 0);
+        //std.debug.warn("SEND EVENT\n");
+        //c.XUnlockDisplay(ctx.display);
+
+        var node = std.atomic.Queue(i32).Node{
+            .data = 0,
+            .next = undefined,
+            .prev = undefined,
+        };
+        msgQueue.put(&node);
+        std.time.sleep(1000000000);
+        counter += 1;
+    }
+    return 0;
+}
+
+const Date = struct {
+    year: u32 = 0,
+    month: u32 = 0,
+    day: u32 = 0,
+    hour: u32 = 0,
+    minute: u32 = 0,
+    second: u32 = 0,
+
+    fn localtime(self: *Date) void {
+        var raw: c.time_t = undefined;
+        _ = c.time(&raw);
+        var info: *c.tm = c.localtime(&raw);
+        self.year = @intCast(u32, info.tm_year + 1900);
+        self.month = @intCast(u32, info.tm_mon + 1);
+        self.day = @intCast(u32, info.tm_mday);
+        self.hour = @intCast(u32, info.tm_hour);
+        self.minute = @intCast(u32, info.tm_min);
+        self.second = @intCast(u32, info.tm_sec);
+    }
+};
+
+pub fn main() !void {
+
     xlib.init(config.fontname);
+    _ = c.XInitThreads();
     defer xlib.delete();
 
     for (config.keys) |key| {
@@ -340,30 +404,46 @@ pub fn main() void {
     }
 
 
-    var cmd = "cd ~/.uwm; ./autostart.sh &";
-    _ = c.system(&cmd);
+    var cmd: [*:0]const u8 = "cd ~/.config/.uwm; ./autostart.sh &";
+    _ = c.system(cmd);
     manager.running = true;
 
 
-    while (manager.running) {
-        var e: c.XEvent = undefined;
-        _ = c.XNextEvent(xlib.display, &e);
+    var ctx = ThreadCtx{.display=xlib.display, .window=xlib.root};
 
-        switch (e.type) {
-            c.Expose => onExpose(&e),
-            c.KeyPress => onKeyPress(&e),
-            c.ConfigureRequest => onConfigureRequest(&e),
-            c.MapRequest => onMapRequest(&e),
-            c.UnmapNotify => onUnmapNotify(&e),
-            c.DestroyNotify => onDestroyNotify(&e),
-            c.EnterNotify => onEnterNotify(&e),
-            c.FocusIn => onFocusIn(&e),
-            c.NoExpose => onNoExpose(&e),
-            c.MotionNotify => onMotionNotify(&e),
-            c.ButtonPress => onButtonPress(&e),
-            else => continue,
-            //else => warn("not handled {}\n", e.type),
+    //var statusbarThread = try std.Thread.spawn(&ctx, updateStatusbar);
+    while (manager.running) {
+
+        //var item = msgQueue.get();
+        //while (item != null) {
+        //    drawBar();
+        //    item = msgQueue.get();
+        //}
+
+        if (c.XPending(xlib.display) > 0) {
+
+            var e: c.XEvent = undefined;
+            _ = c.XNextEvent(xlib.display, &e);
+
+            switch (e.type) {
+                c.Expose => onExpose(&e),
+                c.KeyPress => onKeyPress(&e),
+                c.ConfigureRequest => onConfigureRequest(&e),
+                c.MapRequest => onMapRequest(&e),
+                c.UnmapNotify => onUnmapNotify(&e),
+                c.DestroyNotify => onDestroyNotify(&e),
+                c.EnterNotify => onEnterNotify(&e),
+                c.FocusIn => onFocusIn(&e),
+                c.NoExpose => onNoExpose(&e),
+                c.MotionNotify => onMotionNotify(&e),
+                c.ButtonPress => onButtonPress(&e),
+                else => continue,
+                //else => warn("not handled {}\n", e.type),
+            }
         }
+
+        //// TODO: sleep correct way?
+        //std.time.sleep(1600000);
     }
 
     for (barDraws) |*bardraw| {

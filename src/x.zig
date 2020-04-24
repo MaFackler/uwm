@@ -11,19 +11,19 @@ pub const Xlib = struct {
     const Self = *Xlib;
     fn init(self: Self, fontname: []const u8) void {
         self.display = c.XOpenDisplay(null) orelse {
-            panic("unable to create window");
+            @panic("unable to create window");
         };
         self.screen = c.XDefaultScreen(self.display);
         self.root = c.XRootWindow(self.display, self.screen);
         self.font = c.XftFontOpenName(self.display, self.screen, fontname.ptr);
         if (self.font == undefined) {
-            panic("could not load font");
+            @panic("could not load font");
         }
 
 
         var cursorNormal = c.XCreateFontCursor(self.display, 2);
         var windowAttributes: c.XSetWindowAttributes = undefined;
-        windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask | c.EnterWindowMask | c.FocusChangeMask | c.PropertyChangeMask | c.PointerMotionMask;
+        windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask | c.EnterWindowMask | c.FocusChangeMask | c.PropertyChangeMask | c.PointerMotionMask | c.NoEventMask;
         windowAttributes.cursor = cursorNormal;
         _ = c.XChangeWindowAttributes(self.display, self.root, c.CWEventMask | c.CWCursor, &windowAttributes);
         _ = c.XSelectInput(self.display, self.root, windowAttributes.event_mask);
@@ -55,8 +55,6 @@ pub const Xlib = struct {
     fn closeWindow(self: Self, window: c.Window) void {
         _ = c.XKillClient(self.display, window);
     }
-
-
 
     fn hideWindow(self: Self, window: c.Window) void {
         // TODO: better way to hide
@@ -144,19 +142,10 @@ pub const Xlib = struct {
         _ = c.XConfigureWindow(self.display, window, c.CWBorderWidth, &changes);
     }
 
-
     fn setPointer(self: Self, x: i32, y: i32) void {
         var res = c.XWarpPointer(self.display, self.root, self.root, 0, 0, 0, 0, x, y);
-        std.debug.warn("res is {}", res);
         _ = c.XFlush(self.display);
         _ = c.XSync(self.display, 0);
     }
 
-
 };
-
-//_ = c.XSetErrorHandler(errorHandler);
-//extern fn errorHandler(d: ?*c.Display, e: [*c]c.XErrorEvent) c_int {
-//    warn("ERRRROR\n");
-//    return 0;
-//}

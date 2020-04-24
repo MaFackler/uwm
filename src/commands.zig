@@ -15,8 +15,13 @@ pub fn run(arg: config.Arg) void {
     var cmd = arg.StringList;
     const rc = linux.fork();
     if (rc == 0) {
-        var allocator = std.heap.direct_allocator;
-        var e = std.ChildProcess.exec(allocator, cmd, null, null, 2 * 1024);
+        var allocator = std.heap.page_allocator;
+        var e = std.ChildProcess.exec(.{
+                .allocator=allocator,
+                .argv=cmd,
+                .cwd=null,
+                .max_output_bytes=2 * 1024
+            });
         linux.exit(0);
     }
 }
