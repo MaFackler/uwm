@@ -3,14 +3,16 @@ const config = @import("config.zig");
 const main = @import("main.zig");
 const linux = std.os.linux;
 
-pub fn windowClose(arg: config.Arg) void {
+const c = @import("c.zig");
+
+pub fn windowClose(window: u64, arg: config.Arg) void {
     var workspace = main.manager.getActiveScreen().getActiveWorkspace();
-    var window = workspace.getFocusedWindow();
-    main.xlib.closeWindow(window);
-    workspace.removeWindow(window);
+    var win = workspace.getFocusedWindow();
+    main.xlib.closeWindow(win);
+    workspace.removeWindow(win);
 }
 
-pub fn run(arg: config.Arg) void {
+pub fn run(window: u64, arg: config.Arg) void {
     //var cmd cmd: []const []const u8
     var cmd = arg.StringList;
     const rc = linux.fork();
@@ -26,7 +28,7 @@ pub fn run(arg: config.Arg) void {
     }
 }
 
-pub fn notify(arg: config.Arg) void {
+pub fn notify(window: u64, arg: config.Arg) void {
     var msg = arg.String;
     var cmd = [_][]const u8{
         "notify-send",
@@ -35,32 +37,63 @@ pub fn notify(arg: config.Arg) void {
         msg,
     };
     var argToPass = config.Arg{.StringList=&cmd};
-    run(argToPass);
+    run(window, argToPass);
 }
 
-pub fn exit(arg: config.Arg) void {
+pub fn exit(window: u64, arg: config.Arg) void {
     main.manager.running = false;
 }
 
-pub fn doLayout(arg: config.Arg) void {
+pub fn doLayout(window: u64, arg: config.Arg) void {
 }
 
-pub fn windowNext(arg: config.Arg) void {
+pub fn windowMove(window: u64, arg: config.Arg) void {
+    // TODO: xlib direcly called maybe move to x.zig
+    var mouseEvent: c.XEvent = undefined;
+    // NOTE: have to grab pointer that quering events XMaskEvent will work
+    var xlib = main.xlib;
+    _ = c.XGrabPointer(xlib.display, xlib.root, 0, c.ButtonReleaseMask | c.PointerMotionMask, c.GrabModeAsync, c.GrabModeAsync,
+                  0, xlib.cursor, c.CurrentTime);
+    var maskToQuery = c.ButtonReleaseMask | c.PointerMotionMask | c.ExposureMask | c.SubstructureRedirectMask;
+    // TODO: find better while construct in zig
+    _ = c.XMaskEvent(xlib.display, maskToQuery, &mouseEvent);
+
+    std.debug.warn("before dragStartPos\n", .{});
+    var dragStartPos = main.xlib.getPointerPos(window);
+    std.debug.warn("after dragStartPos {} {}\n", .{dragStartPos[0], dragStartPos[1]});
+
+    while (mouseEvent.type != c.ButtonRelease) {
+        switch (mouseEvent.type) {
+            c.MotionNotify => {
+                xlib.move(window,
+                          mouseEvent.xmotion.x - dragStartPos[0],
+                          mouseEvent.xmotion.y - dragStartPos[1]);
+            },
+            else => {},
+        }
+
+        _ = c.XMaskEvent(xlib.display, maskToQuery, &mouseEvent);
+    }
+
+    _ = c.XUngrabPointer(xlib.display, c.CurrentTime);
+}
+
+pub fn windowNext(window: u64, arg: config.Arg) void {
     var workspace = main.manager.getActiveScreen().getActiveWorkspace();
     main.windowFocus(workspace.getNextWindow());
 }
 
-pub fn windowPrevious(arg: config.Arg) void {
+pub fn windowPrevious(window: u64, arg: config.Arg) void {
     var workspace = main.manager.getActiveScreen().getActiveWorkspace();
     main.windowFocus(workspace.getPreviousWindow());
 }
 
-pub fn workspaceShow(arg: config.Arg) void {
+pub fn workspaceShow(window: u64, arg: config.Arg) void {
     var index = arg.UInt;
     var screen = main.manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    for (workspace.windows[0..workspace.amountOfWindows]) |window| {
-        main.xlib.hideWindow(window);
+    for (workspace.windows[0..workspace.amountOfWindows]) |win| {
+        main.xlib.hideWindow(win);
     }
     screen.workspaceFocus(index);
     workspace = screen.getActiveWorkspace();
@@ -73,13 +106,13 @@ pub fn workspaceShow(arg: config.Arg) void {
     }
 }
 
-pub fn workspaceFocusPrevious(arg: config.Arg) void {
+pub fn workspaceFocusPrevious(window: u64, arg: config.Arg) void {
     var screen = main.manager.getActiveScreen();
     var a = config.Arg{.UInt=screen.previousWorkspace};
-    workspaceShow(a);
+    workspaceShow(window, a);
 }
 
-pub fn screenSelectByDelta(arg: config.Arg) void {
+pub fn screenSelectByDelta(window: u64, arg: config.Arg) void {
     var delta = arg.Int;
     var amount: i32 = @intCast(i32, main.manager.amountScreens);
     var index: i32 = @intCast(i32, main.manager.activeScreenIndex) + delta;

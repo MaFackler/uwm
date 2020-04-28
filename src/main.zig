@@ -33,14 +33,19 @@ fn getBar(index: usize) c.Window {
 
 pub fn onConfigureRequest(e: *c.XEvent) void {
     var event = e.xconfigurerequest;
-    var workspace = manager.getActiveScreen().getActiveWorkspace();
+    var screen = manager.getActiveScreen();
+    var workspace = screen.getActiveWorkspace();
+    var changes: c.XWindowChanges = undefined;
     if (!workspace.hasWindow(event.window)) {
-        var changes: c.XWindowChanges = undefined;
-        changes.height = e.xconfigurerequest.height;
-        changes.border_width = e.xconfigurerequest.border_width;
-        changes.sibling = e.xconfigurerequest.above;
-        changes.stack_mode = e.xconfigurerequest.detail;
+        changes.x = event.x;
+        changes.y = event.y;
+        changes.width = event.width;
+        changes.height = event.height;
+        changes.border_width = event.border_width;
+        changes.sibling = event.above;
+        changes.stack_mode = event.detail;
         _ = c.XConfigureWindow(xlib.display, event.window, @intCast(c_uint, event.value_mask), &changes);
+        _ = c.XSync(xlib.display, 0);
     }
 }
 
@@ -89,6 +94,7 @@ fn debug(comptime msg: []const u8, args: var) void {
     //var buf: [256]u8 = undefined;
     //var str = std.fmt.bufPrint(&buf, msg, args) catch unreachable;
     //var res = logfile.write(str) catch unreachable;
+    std.debug.warn(msg, args);
 }
 
 fn onUnmapNotify(e: *c.XEvent) void {
@@ -115,20 +121,28 @@ fn getColor(color: config.COLOR) u64 {
     return colours.getColorPixel(@enumToInt(color));
 }
 
+
 pub fn onMapRequest(e: *c.XEvent) void {
     var event = e.xmap;
-    debug("onMapRequest {}\n", .{@as(u64, event.window)});
-
     var screen = manager.getActiveScreen();
     var workspace = screen.getActiveWorkspace();
-    if (workspace.addWindow(event.window)) {
+    debug("onMapRequest {}\n", .{@as(u64, event.window)});
+    debug("override_redirect is {}\n", .{@as(i32, event.override_redirect)});
+
+    xlib.grabButton(event.window);
+    var fixed = xlib.isFixed(event.window);
+    // NOTE: popups or application like steam will request a fixed size and will not be
+    // manged by window manager
+    if (fixed) {
+        _ = c.XMapWindow(xlib.display, event.window);
+    } else if (workspace.addWindow(event.window)) {
         layouts[manager.activeScreenIndex].stack(workspace, &xlib);
         _ = c.XSelectInput(xlib.display, event.window, c.EnterWindowMask | c.FocusChangeMask | c.PointerMotionMask);
         _ = c.XMapWindow(xlib.display, event.window);
-        _ = c.XSync(xlib.display, 1);
         windowFocus(event.window);
-        xlib.grabButton(event.window);
     }
+
+    _ = c.XSync(xlib.display, 0);
 }
 
 pub fn sendConfigureEvent(window: c.Window) void {
@@ -244,8 +258,13 @@ fn onNoExpose(e: *c.XEvent) void {
 
 fn onMotionNotify(e: *c.XEvent) void {
     var event = e.xmotion;
+    var workspace = manager.getActiveScreen().getActiveWorkspace();
     // TODO: issue when to many motion events?? it laggs
-    debug("Motion Event {}\n", .{ @as(u64, event.window)});
+    //debug("Motion Event {}\n", .{ @as(u64, event.window)});
+
+    if (!workspace.hasWindow(event.window)) {
+        xlib.move(event.window, 200, 200);
+    }
     for (manager.screens[0..manager.amountScreens]) |screen, screenIndex| {
         if (event.x_root > screen.info.x and event.x_root < screen.info.x + @intCast(i32, screen.info.width)
             and event.y_root > screen.info.y and event.y_root < screen.info.y + @intCast(i32, screen.info.height)) {
@@ -266,15 +285,25 @@ fn onKeyPress(e: *c.XEvent) void {
     var workspace = screen.getActiveWorkspace();
 
     for (config.keys) |key| {
-        if (event.state == key.modifier and keysym == key.keysym) {
-            key.action(key.arg);
+        if (event.state == key.modifier and keysym == key.code) {
+            key.action(event.window, key.arg);
             break;
         }
     }
 }
 
+
 fn onButtonPress(e: *c.XEvent) void {
     var event = e.xbutton;
+    debug("window click {}\n", .{event.window});
+
+    for (config.buttons) |button| {
+        if (event.state == button.modifier and event.button == button.code) {
+            button.action(event.window, button.arg);
+            break;
+        }
+    }
+    
     _ = c.XAllowEvents(xlib.display, c.ReplayPointer, c.CurrentTime);
     windowFocus(event.window);
 
@@ -387,7 +416,6 @@ const Date = struct {
 };
 
 pub fn main() !void {
-
     
     logfile = std.fs.cwd().createFile("log.txt", .{}) catch unreachable;
 
@@ -396,7 +424,7 @@ pub fn main() !void {
     defer xlib.delete();
 
     for (config.keys) |key| {
-        xlib.grabKey(key.modifier, key.keysym);
+        xlib.grabKey(key.modifier, key.code);
     }
 
     xineramaGetScreenInfo();

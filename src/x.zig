@@ -7,6 +7,7 @@ pub const Xlib = struct {
     screen: i32 = 0,
     root: c.Window = undefined,
     font: *c.XftFont = undefined,
+    cursor: u64 = undefined,
 
     const Self = *Xlib;
     fn init(self: Self, fontname: []const u8) void {
@@ -21,10 +22,10 @@ pub const Xlib = struct {
         }
 
 
-        var cursorNormal = c.XCreateFontCursor(self.display, 2);
+        self.cursor = c.XCreateFontCursor(self.display, 2);
         var windowAttributes: c.XSetWindowAttributes = undefined;
         windowAttributes.event_mask = c.SubstructureNotifyMask | c.SubstructureRedirectMask | c.KeyPressMask | c.EnterWindowMask | c.FocusChangeMask | c.PropertyChangeMask | c.PointerMotionMask | c.NoEventMask;
-        windowAttributes.cursor = cursorNormal;
+        windowAttributes.cursor = self.cursor;
         _ = c.XChangeWindowAttributes(self.display, self.root, c.CWEventMask | c.CWCursor, &windowAttributes);
         _ = c.XSelectInput(self.display, self.root, windowAttributes.event_mask);
         _ = c.XSync(self.display, 0);
@@ -62,7 +63,16 @@ pub const Xlib = struct {
 
     fn hideWindow(self: Self, window: c.Window) void {
         // TODO: better way to hide
-        _ = c.XMoveWindow(self.display, window, -4000, 0);
+        self.move(window, -4000, 0);
+    }
+
+    fn move(self: Self, window: c.Window, x: i32, y: i32) void {
+        _ = c.XMoveWindow(self.display, window, x, y);
+    }
+
+    fn moveByDelta(self: Self, window: c.Window, x: i32, y: i32) void {
+        var windowDimension = self.getWindowPos(window);
+        self.move(window, @intCast(i32, windowDimension[0]) + x, @intCast(i32, windowDimension[1]) + y);
     }
 
     fn focusWindow(self: Self, window: c.Window) void {
@@ -98,6 +108,37 @@ pub const Xlib = struct {
                                   &attributes);
         _ = c.XMapWindow(self.display, res);
         return res;
+    }
+
+    fn getWindowDimensions(self: Self, window: c.Window) @Vector(2, u32) {
+
+        var rootReturn: c.Window = undefined;
+        var x: c_int = 0;
+        var y: c_int = 0;
+        var width: c_uint = 0;
+        var height: c_uint = 0;
+        var borderWidth: c_uint = 0;
+        var depth: c_uint = 0;
+        _ = c.XGetGeometry(self.display, window, &rootReturn,
+                           &x, &y,
+                           &width, &height,
+                           &borderWidth, &depth);
+        return [2]u32{width, height};
+    }
+
+    fn getWindowPos(self: Self, window: c.Window) @Vector(2, i32) {
+        var rootReturn: c.Window = undefined;
+        var x: c_int = 0;
+        var y: c_int = 0;
+        var width: c_uint = 0;
+        var height: c_uint = 0;
+        var borderWidth: c_uint = 0;
+        var depth: c_uint = 0;
+        _ = c.XGetGeometry(self.display, window, &rootReturn,
+                           &x, &y,
+                           &width, &height,
+                           &borderWidth, &depth);
+        return [2]i32{x, y};
     }
 
     fn getWindowWidth(self: Self, window: c.Window) u32 {
@@ -150,6 +191,47 @@ pub const Xlib = struct {
         var res = c.XWarpPointer(self.display, self.root, self.root, 0, 0, 0, 0, x, y);
         _ = c.XFlush(self.display);
         _ = c.XSync(self.display, 0);
+    }
+
+    fn getPointerPos(self: Self, window: c.Window) @Vector(2, i32) {
+        var i: i32 = 0;
+        var x: i32 = 0;
+        var y: i32 = 0;
+        var ui: u32 = 0;
+        var win: c.Window = 0;
+        _ = c.XQueryPointer(self.display, window, &win, &win, &i, &i, &x, &y, &ui);
+        return [2]i32{x, y};
+
+    }
+
+    fn isFixed(self: Self, window: c.Window) bool {
+
+        var res = false;
+        var hints: c.XSizeHints = undefined;
+        var tempHints: c.XSizeHints = undefined;
+        // TODO: remove this
+        tempHints.min_width = 0;
+        tempHints.min_height = 0;
+        tempHints.max_width = -1;
+        tempHints.max_height = -1;
+        var foo: i64 = 0;
+        _ = c.XGetWMNormalHints(self.display, window, &hints, &foo);
+        if (hints.flags & c.PBaseSize == c.PBaseSize) {
+            std.debug.warn("PBaseSize {} {}\n", .{hints.base_width, hints.base_height});
+        }
+        if (hints.flags & c.PMinSize == c.PMinSize) {
+            std.debug.warn("PMin {} {}\n", .{hints.min_width, hints.min_height});
+            tempHints.min_width = hints.min_width;
+            tempHints.min_height = hints.min_height;
+        }
+        if (hints.flags & c.PMaxSize == c.PMaxSize) {
+            std.debug.warn("PMaxSize {} {}\n", .{hints.max_width, hints.max_height});
+            tempHints.max_width = hints.max_width;
+            tempHints.max_height = hints.max_height;
+        }
+
+        res = tempHints.min_width == tempHints.max_width and tempHints.min_height == tempHints.max_height;
+        return res;
     }
 
 };
