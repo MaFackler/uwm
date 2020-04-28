@@ -11,16 +11,10 @@ pub const Xlib = struct {
 
     const Self = *Xlib;
     fn init(self: Self, fontname: []const u8) void {
-        self.display = c.XOpenDisplay(null) orelse {
-            @panic("unable to create window");
-        };
+        self.display = c.XOpenDisplay(null) orelse @panic("unable to create window");
         self.screen = c.XDefaultScreen(self.display);
         self.root = c.XRootWindow(self.display, self.screen);
-        self.font = c.XftFontOpenName(self.display, self.screen, fontname.ptr);
-        if (self.font == undefined) {
-            @panic("could not load font");
-        }
-
+        self.font = c.XftFontOpenName(self.display, self.screen, fontname.ptr) orelse @panic("could not load font");
 
         self.cursor = c.XCreateFontCursor(self.display, 2);
         var windowAttributes: c.XSetWindowAttributes = undefined;
